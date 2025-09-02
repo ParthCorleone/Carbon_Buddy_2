@@ -1,0 +1,87 @@
+// This is your Prisma schema file.
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ================== MODELS ==================
+
+// User model for authentication and profile management
+model User {
+  id        String          @id @default(cuid())
+  name      String
+  email     String          @unique
+  password  String          // hashed password
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  // Relation to daily emission entries
+  entries   EmissionEntry[]
+}
+
+// Stores the daily carbon footprint data for a user
+model EmissionEntry {
+  id   String   @id @default(cuid())
+  date DateTime
+
+  // Relation to the User
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ---------- RAW INPUTS ----------
+  // Transport
+  carDistanceKms          Float?
+  carType                 CarType?
+  publicTransportKms      Float?
+  flightKms               Float?
+  cyclingWalkingKms       Float?
+
+  // Energy
+  officeHours             Float?
+  electricityBill         Float?
+  emissionFactor          Float?
+
+  // Food
+  diet                    Diet?
+  waterBottlesConsumed    Int?
+  ateLocalOrSeasonalFood  Boolean  @default(false)
+
+  // Digital
+  pagesPrinted            Int?
+  videoCallHours          Float?
+  cloudStorageGb          Float?
+
+  // ---------- CALCULATED EMISSIONS (kg CO2) ----------
+  transportEmissions      Float    @default(0)
+  energyEmissions         Float    @default(0)
+  foodEmissions           Float    @default(0)
+  digitalEmissions        Float    @default(0)
+  totalEmissions          Float    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Ensure one entry per user per day
+  @@unique([userId, date])
+}
+
+// ================== ENUMS ==================
+enum CarType {
+  PETROL
+  DIESEL
+  HYBRID
+  ELECTRIC
+}
+
+enum Diet {
+  VEGAN
+  VEGETARIAN
+  MIXED
+  HEAVY_MEAT
+}

@@ -1,0 +1,449 @@
+"use client";
+
+import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import {
+    BarChart, Droplet, Leaf, Footprints, Zap, Apple, Monitor,
+    TrendingUp, Sun, PieChart, Target, ArrowUp, ArrowDown,
+    Link
+} from 'lucide-react';
+import JSX from 'react/jsx-runtime';
+
+// --- REUSABLE SUB-COMPONENTS ---
+
+const SummaryCard = ({ icon, title, value, unit, description, bgColor, trend = 'none' }) => {
+    const isPositive = trend === 'up';
+    const isNegative = trend === 'down';
+
+    return (
+        <div className={`rounded-2xl p-4 md:p-6 flex flex-col justify-between shadow-sm ${bgColor}`}>
+            <div className="flex justify-between items-start">
+                <p className="font-semibold text-gray-700">{title}</p>
+                {icon}
+            </div>
+            <div>
+                <div className="flex items-baseline">
+                    <p className="text-3xl md:text-4xl font-bold text-gray-800">
+                        {value}
+                        <span className="text-xl font-semibold ml-1">{unit}</span>
+                    </p>
+                    {isPositive && <ArrowUp size={20} className="ml-2 text-green-600" />}
+                    {isNegative && <ArrowDown size={20} className="ml-2 text-red-600" />}
+                </div>
+                <p className="text-sm text-gray-600 mt-1">{description}</p>
+            </div>
+        </div>
+    );
+};
+
+// --- PLACEHOLDER COMPONENTS (to be built out) ---
+
+const CalculatorView = ({ todayEmissions }) => {
+    type TabId = 'transport' | 'energy' | 'food' | 'digital';
+
+    const [activeTab, setActiveTab] = useState<TabId>('transport');
+    const [formData, setFormData] = useState({
+        transport: { carDistanceKms: 0, carType: "", publicTransportKms: 0, flightKms: 0 },
+        energy: { officeHours: 0, emissionFactor: 0, electricityBill: 0 },
+        food: { diet: "", waterBottlesConsumed: 0, ateLocalOrSeasonalFood: false },
+        digital: { pagesPrinted: 0, videoCallHours: 0, cloudStorageGb: 0 },
+    });
+    const [saving, setSaving] = useState(false);
+    const [message, setMessage] = useState("");
+
+    // ✅ define categories *inside* the component before using it
+    const categories: { name: string; id: TabId; icon: JSX.Element; value: number }[] = [
+        { name: 'Transport', id: 'transport', icon: <Footprints size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.transport ?? 0) },
+        { name: 'Energy', id: 'energy', icon: <Zap size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.energy ?? 0) },
+        { name: 'Food', id: 'food', icon: <Apple size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.food ?? 0) },
+        { name: 'Digital', id: 'digital', icon: <Monitor size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.digital ?? 0) },
+    ];
+
+    const handleChange = (tab: TabId, field: string, value: any) => {
+        setFormData(prev => ({
+            ...prev,
+            [tab]: { ...prev[tab], [field]: value }
+        }));
+    };
+
+    const handleSave = async () => {
+        setSaving(true);
+        setMessage("");
+        try {
+            const res = await fetch("/api/emissions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData),
+            });
+            if (!res.ok) throw new Error("Failed to save");
+            setMessage("Saved successfully ✅");
+        } catch (err) {
+            console.error(err);
+            setMessage("Error saving ❌");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const renderForm = () => {
+        switch (activeTab) {
+            case "transport":
+                return (
+                    <div className='text-black'>
+                        <label className="block mb-2">Car Distance (kms)</label>
+                        <input
+                            type="number"
+                            value={formData.transport.carDistanceKms}
+                            onChange={(e) => handleChange("transport", "carDistanceKms", Number(e.target.value))}
+                            className="w-full p-2 border rounded mb-4"
+                        />
+                        <label className="block mb-2">Car Type</label>
+                        <select
+                            value={formData.transport.carType}
+                            onChange={(e) => handleChange("transport", "carType", e.target.value)}
+                            className="w-full p-2 border rounded mb-4"
+                        >
+                            <option value="">Select</option>
+                            <option value="PETROL">Petrol</option>
+                            <option value="DIESEL">Diesel</option>
+                            <option value="HYBRID">Hybrid</option>
+                            <option value="ELECTRIC">Electric</option>
+                        </select>
+                        <label className="block mb-2">Public Transport (kms)</label>
+                        <input
+                            type="number"
+                            value={formData.transport.publicTransportKms}
+                            onChange={(e) => handleChange("transport", "publicTransportKms", Number(e.target.value))}
+                            className="w-full p-2 border rounded mb-4"
+                        />
+                        <label className="block mb-2">Flight (kms)</label>
+                        <input
+                            type="number"
+                            value={formData.transport.flightKms}
+                            onChange={(e) => handleChange("transport", "flightKms", Number(e.target.value))}
+                            className="w-full p-2 border rounded mb-4"
+                        />
+                        <label className="block mb-2">Cycling / Walking (kms)</label>
+                        <input
+                            type="number"
+                            value={formData.transport.cyclingWalkingKms || 0}
+                            onChange={(e) => handleChange("transport", "cyclingWalkingKms", Number(e.target.value))}
+                            className="w-full p-2 border rounded mb-4"
+                        />
+                    </div>
+                );
+            case "energy":
+                return (
+                    <div className='text-black'>
+                        <label className="block mb-2">Office Hours</label>
+                        <input
+                            type="number"
+                            value={formData.energy.officeHours}
+                            onChange={(e) => handleChange("energy", "officeHours", Number(e.target.value))}
+                            className="w-full p-2 border rounded mb-4"
+                        />
+                        <label className="block mb-2">Electricity Bill</label>
+                        <input
+                            type="number"
+                            value={formData.energy.electricityBill}
+                            onChange={(e) => handleChange("energy", "electricityBill", Number(e.target.value))}
+                            className="w-full p-2 border rounded mb-4"
+                        />
+                        <label className="block mb-2">Emission Factor</label>
+                        <input
+                            type="number"
+                            value={formData.energy.emissionFactor}
+                            onChange={(e) => handleChange("energy", "emissionFactor", Number(e.target.value))}
+                            className="w-full p-2 border rounded mb-4"
+                        />
+                    </div>
+                );
+
+            case "food":
+                return (
+                    <div className='text-black'>
+                        <label className="block mb-2">Diet</label>
+                        <select
+                            value={formData.food.diet}
+                            onChange={(e) => handleChange("food", "diet", e.target.value)}
+                            className="w-full p-2 border rounded mb-4"
+                        >
+                            <option value="">Select</option>
+                            <option value="VEGAN">Vegan</option>
+                            <option value="VEGETARIAN">Vegetarian</option>
+                            <option value="MIXED">Mixed</option>
+                            <option value="HEAVY_MEAT">Heavy Meat</option>
+                        </select>
+                        <label className="block mb-2">Water Bottles Consumed</label>
+                        <input
+                            type="number"
+                            value={formData.food.waterBottlesConsumed}
+                            onChange={(e) => handleChange("food", "waterBottlesConsumed", Number(e.target.value))}
+                            className="w-full p-2 border rounded mb-4"
+                        />
+                        <label className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                checked={formData.food.ateLocalOrSeasonalFood}
+                                onChange={(e) => handleChange("food", "ateLocalOrSeasonalFood", e.target.checked)}
+                            />
+                            <span>Ate local/seasonal food</span>
+                        </label>
+                    </div>
+                );
+            case "digital":
+                return (
+                    <div className='text-black'>
+                        <label className="block mb-2">Pages Printed</label>
+                        <input
+                            type="number"
+                            value={formData.digital.pagesPrinted}
+                            onChange={(e) => handleChange("digital", "pagesPrinted", Number(e.target.value))}
+                            className="w-full p-2 border rounded mb-4"
+                        />
+                        <label className="block mb-2">Video Call Hours</label>
+                        <input
+                            type="number"
+                            value={formData.digital.videoCallHours}
+                            onChange={(e) => handleChange("digital", "videoCallHours", Number(e.target.value))}
+                            className="w-full p-2 border rounded mb-4"
+                        />
+                        <label className="block mb-2">Cloud Storage (GB)</label>
+                        <input
+                            type="number"
+                            value={formData.digital.cloudStorageGb}
+                            onChange={(e) => handleChange("digital", "cloudStorageGb", Number(e.target.value))}
+                            className="w-full p-2 border rounded mb-4"
+                        />
+                    </div>
+                );
+        }
+    };
+
+    return (
+        <div className="bg-white p-6 rounded-2xl shadow-md animate-fade-in">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                <div>
+                    <h2 className="text-xl font-bold text-gray-800">Daily Carbon Footprint Calculator</h2>
+                    <p className="text-gray-600">Fill in your activities category by category</p>
+                </div>
+                <div className="text-right mt-4 md:mt-0">
+                    <p className="text-3xl font-bold text-green-600">{Number(todayEmissions?.total ?? 0).toFixed(2)} kg</p>
+                </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                {categories.map(cat => (
+                    <div
+                        key={cat.id}
+                        onClick={() => setActiveTab(cat.id)}
+                        className={`p-4 rounded-xl text-center cursor-pointer border-2 transition-all ${activeTab === cat.id ? 'bg-green-100 border-green-500 scale-105' : 'bg-gray-50 border-transparent hover:bg-gray-100'}`}
+                    >
+                        {cat.icon}
+                        <p className="font-semibold text-black mt-2">{cat.name}</p>
+                        <p className="font-bold text-black text-lg">{cat.value.toFixed(1)} kg</p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Form */}
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSave();
+                }}
+                className="p-6 border rounded-lg bg-gray-50"
+            >
+                {renderForm()}
+                <button
+                    type="submit"
+                    disabled={saving}
+                    className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                    {saving ? "Saving..." : "Save"}
+                </button>
+                {message && <p className="mt-2 text-sm">{message}</p>}
+            </form>
+        </div>
+    );
+};
+
+
+
+const ChartsView = () => {
+    const [activeChart, setActiveChart] = useState('weekly');
+
+    const chartOptions = [
+        { name: 'Weekly Trend', id: 'weekly', icon: <TrendingUp /> },
+        { name: 'Daily Progress', id: 'daily', icon: <Sun /> },
+        { name: 'Category Breakdown', id: 'category', icon: <PieChart /> },
+        { name: 'Goal Comparison', id: 'goal', icon: <Target /> },
+    ];
+
+    return (
+        <div className="bg-white p-6 rounded-2xl shadow-md animate-fade-in">
+            <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-800">Emission Trends</h2>
+                <p className="text-gray-600">Your carbon footprint over time</p>
+            </div>
+            <div className="flex flex-wrap border-b mb-4">
+                {chartOptions.map(opt => (
+                    <button key={opt.id} onClick={() => setActiveChart(opt.id)} className={`flex items-center space-x-2 px-3 py-2 -mb-px rounded-t-lg font-semibold transition-colors ${activeChart === opt.id ? 'bg-green-100 text-green-700 border-b-2 border-green-500' : 'text-gray-500 hover:bg-gray-100'}`}>
+                        {opt.icon}
+                        <span>{opt.name}</span>
+                    </button>
+                ))}
+            </div>
+            <div className="mt-4 p-6 bg-gray-50 rounded-lg min-h-[300px]">
+                <h3 className="text-lg text-gray-500 font-semibold capitalize">{activeChart} View</h3>
+                <p className="text-gray-500 mt-2">The chart for '{activeChart}' will be rendered here. This is a placeholder.</p>
+            </div>
+        </div>
+    );
+};
+
+
+// --- MAIN DASHBOARD COMPONENT ---
+
+export default function DashboardPage() {
+    const [view, setView] = useState('calculator'); // 'calculator' or 'charts'
+    const [loading, setLoading] = useState(true);
+    const [data, setData] = useState(null);
+    const [error, setError] = useState(null);
+
+    const router = useRouter();
+
+    async function handleLogout() {
+        const response = await fetch('/api/logout', {
+            method: 'POST',
+        });
+        router.push('/');
+
+    }
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const response = await fetch('/api/dashboardSummary');
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        // You could redirect to login here: window.location.href = '/login';
+                        throw new Error('Unauthorized. Please log in again.');
+                    }
+                    throw new Error('Failed to fetch dashboard data');
+                }
+                const summaryData = await response.json();
+                setData(summaryData);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    if (loading) {
+        return <div className="flex justify-center items-center h-screen bg-gray-50 text-gray-700 font-semibold">Loading Dashboard...</div>;
+    }
+
+    if (error) {
+        return <div className="flex justify-center items-center h-screen bg-red-50 text-red-700 font-semibold text-center p-4">Error: {error}</div>;
+    }
+
+    if (!data) {
+        return <div className="flex justify-center items-center h-screen bg-gray-50">No data available. Please add an emission entry.</div>;
+    }
+
+    const { userName, summary, todayEmissions } = data;
+
+    return (
+        <div className="bg-gray-50 min-h-screen p-4 md:p-8">
+            <button
+                onClick={handleLogout}
+                className="inline-block px-4 py-2 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition-colors duration-200 float-right"
+            >
+                Logout
+            </button>
+            
+            <div className="max-w-7xl mx-auto">
+                {/* Header */}
+                <header className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-800">Welcome back, {userName}! 🌱</h1>
+                    <p className="text-gray-600 text-lg">You're doing great! Here's your carbon footprint summary.</p>
+                </header>
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <SummaryCard
+                        icon={<BarChart className="text-green-600" />}
+                        title="This Week"
+                        value={summary.thisWeekEmissions.toFixed(2)}
+                        unit="kg"
+                        description="15.0 kg under goal"
+                        bgColor="bg-green-100"
+                    />
+                    <SummaryCard
+                        icon={<TrendingUp className="text-blue-600" />}
+                        title="Monthly Reduction"
+                        value={Math.abs(summary.monthlyReduction)}
+                        unit="%"
+                        description="vs last month"
+                        bgColor="bg-blue-100"
+                        trend={summary.monthlyReduction >= 0 ? 'up' : 'down'}
+                    />
+                    <SummaryCard
+                        icon={<Leaf className="text-teal-600" />}
+                        title="Trees Saved"
+                        value={summary.treesSaved}
+                        unit="trees"
+                        description="based on CO2 reduction"
+                        bgColor="bg-teal-100"
+                    />
+                    <SummaryCard
+                        icon={<Droplet className="text-indigo-600" />}
+                        title="Streak"
+                        value={summary.streak}
+                        unit="days"
+                        description="days active"
+                        bgColor="bg-indigo-100"
+                    />
+                </div>
+
+                {/* View Toggler */}
+                <div className="flex justify-center mb-6 bg-white p-2 rounded-xl shadow-sm w-fit mx-auto">
+                    <button
+                        onClick={() => setView('calculator')}
+                        className={`px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${view === 'calculator' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                    >
+                        Calculator
+                    </button>
+                    <button
+                        onClick={() => setView('charts')}
+                        className={`px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${view === 'charts' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                    >
+                        Charts
+                    </button>
+                </div>
+
+                {/* Dynamic Content */}
+                <main>
+                    {view === 'calculator' ? <CalculatorView todayEmissions={todayEmissions} /> : <ChartsView />}
+                </main>
+            </div>
+            <style jsx global>{`
+                .animate-fade-in {
+                    animation: fadeIn 0.5s ease-in-out;
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
+        </div>
+    );
+}
+
