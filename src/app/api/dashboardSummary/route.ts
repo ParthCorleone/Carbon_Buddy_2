@@ -1,9 +1,14 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
-import { cookies } from 'next/headers';
-import { getWeekDateRange, calculateStreak } from '@/lib/dashboard-helpers';
-import { Jersey_15 } from 'next/font/google';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
+import {
+  getWeekDateRange,
+  getSundayWeekRange,
+  calculateStreak,
+  getMonthDateRange,
+} from "@/lib/dashboard-helpers";
+//import { Jersey_15 } from "next/font/google";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -13,11 +18,13 @@ if (!JWT_SECRET) {
 // --- Helper to get userId from JWT ---
 async function getUserIdFromToken() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
+  const token = cookieStore.get("token")?.value;
   if (!token) return null;
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET as string) as unknown as { userId: string };
+    const decoded = jwt.verify(token, JWT_SECRET as string) as unknown as {
+      userId: string;
+    };
     return decoded.userId;
   } catch {
     return null;
@@ -54,8 +61,9 @@ async function backfillEmissions(userId: string) {
 
     if (pastEntries.length === 0) break;
 
-    const avg = (field: keyof typeof pastEntries[0]) =>
-      pastEntries.reduce((sum, e) => sum + (e[field] as number), 0) / pastEntries.length;
+    const avg = (field: keyof (typeof pastEntries)[0]) =>
+      pastEntries.reduce((sum, e) => sum + (e[field] as number), 0) /
+      pastEntries.length;
 
     await prisma.emissionEntry.create({
       data: {
@@ -77,13 +85,13 @@ async function backfillEmissions(userId: string) {
 export async function GET() {
   const userId = await getUserIdFromToken();
   if (!userId) {
-    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      return NextResponse.json({ message: 'User not found' }, { status: 404 });
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
     // --- NEW: backfill missing entries before fetching data ---
@@ -93,27 +101,51 @@ export async function GET() {
     today.setHours(0, 0, 0, 0);
 
     // --- Fetch in parallel ---
-    const [allEntries, thisWeekAggregate, todayEmissionsData] = await Promise.all([
-      prisma.emissionEntry.findMany({
-        where: { userId },
-        orderBy: { date: 'desc' },
-      }),
-      prisma.emissionEntry.aggregate({
-        where: { userId, date: getWeekDateRange() },
-        _sum: { totalEmissions: true },
-      }),
-      prisma.emissionEntry.findFirst({
-        where: { userId, date: today },
-      }),
-    ]);
+    const [allEntries, thisWeekAggregate, todayEmissionsData] =
+      await Promise.all([
+        prisma.emissionEntry.findMany({
+          where: { userId },
+          orderBy: { date: "desc" },
+        }),
+        prisma.emissionEntry.aggregate({
+          where: {
+            userId,
+            date: getSundayWeekRange(),
+          },
+          _sum: { totalEmissions: true },
+        }),
+
+        prisma.emissionEntry.findFirst({
+          where: { userId, date: today },
+        }),
+      ]);
 
     // --- Process data ---
     const thisWeekEmissions = thisWeekAggregate._sum.totalEmissions || 0;
     const streak = calculateStreak(allEntries);
 
-    const monthlyReduction =
-      allEntries.length > 1 ? 15 + Math.floor(Math.random() * 20) : 0;
-    const treesSaved = Math.floor((15 - thisWeekEmissions) / 2);
+    // Fetch totals for current and last month
+    const [thisMonthAgg, lastMonthAgg] = await Promise.all([
+      prisma.emissionEntry.aggregate({
+        where: { userId, date: getMonthDateRange(0) },
+        _sum: { totalEmissions: true },
+      }),
+      prisma.emissionEntry.aggregate({
+        where: { userId, date: getMonthDateRange(-1) },
+        _sum: { totalEmissions: true },
+      }),
+    ]);
+
+    const thisMonthTotal = thisMonthAgg._sum.totalEmissions || 0;
+    const lastMonthTotal = lastMonthAgg._sum.totalEmissions || 0;
+
+    let monthlyReduction = 0;
+    if (lastMonthTotal > 0) {
+      monthlyReduction =
+        ((lastMonthTotal - thisMonthTotal) / lastMonthTotal) * 100;
+    }
+
+    const treesSaved = Math.floor((90 - thisWeekEmissions) / 2);
 
     const response = {
       userName: user.name,
@@ -135,6 +167,9 @@ export async function GET() {
     return NextResponse.json(response);
   } catch (error) {
     console.error("Dashboard API Error:", error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { message: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

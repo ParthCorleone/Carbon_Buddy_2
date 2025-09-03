@@ -52,6 +52,7 @@ export async function POST(request: Request) {
       electricityBill: rawData.energy.electricityBill,
       emissionFactor: rawData.energy.emissionFactor,
       diet: rawData.food.diet,
+      foodConsumed: rawData.food.foodConsumed,
       waterBottlesConsumed: rawData.food.waterBottlesConsumed,
       ateLocalOrSeasonalFood: rawData.food.ateLocalOrSeasonalFood,
       pagesPrinted: rawData.digital.pagesPrinted,
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
       digitalEmissions: calculated.digitalEmissions,
       totalEmissions: calculated.totalEmissions,
     };
-
+    
     // 3. Upsert (update if entry exists for today, else create)
     const result = await prisma.emissionEntry.upsert({
       where: {

@@ -37,7 +37,7 @@ model EmissionEntry {
   // ---------- RAW INPUTS ----------
   // Transport
   carDistanceKms          Float?
-  carType                 CarType?
+  carType                 CarType? @default(PETROL)
   publicTransportKms      Float?
   flightKms               Float?
   cyclingWalkingKms       Float?
@@ -48,7 +48,8 @@ model EmissionEntry {
   emissionFactor          Float?
 
   // Food
-  diet                    Diet?
+  diet                    Diet? @default(MIXED)
+  foodConsumed            Int?
   waterBottlesConsumed    Int?
   ateLocalOrSeasonalFood  Boolean  @default(false)
 

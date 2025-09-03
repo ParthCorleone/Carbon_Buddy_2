@@ -43,21 +43,76 @@ const CalculatorView = ({ todayEmissions }) => {
 
     const [activeTab, setActiveTab] = useState<TabId>('transport');
     const [formData, setFormData] = useState({
-        transport: { carDistanceKms: 0, carType: "", publicTransportKms: 0, flightKms: 0 },
-        energy: { officeHours: 0, emissionFactor: 0, electricityBill: 0 },
-        food: { diet: "", waterBottlesConsumed: 0, ateLocalOrSeasonalFood: false },
-        digital: { pagesPrinted: 0, videoCallHours: 0, cloudStorageGb: 0 },
+        transport: {
+            carDistanceKms: todayEmissions?.carDistanceKms ?? 0,
+            carType: todayEmissions?.carType ?? "PETROL",
+            publicTransportKms: todayEmissions?.publicTransportKms ?? 0,
+            flightKms: todayEmissions?.flightKms ?? 0,
+            cyclingWalkingKms: todayEmissions?.cyclingWalkingKms ?? 0,
+        },
+        energy: {
+            officeHours: todayEmissions?.officeHours ?? 0,
+            emissionFactor: todayEmissions?.emissionFactor ?? 0,
+            electricityBill: todayEmissions?.electricityBill ?? 0,
+        },
+        food: {
+            diet: todayEmissions?.diet ?? "MIXED",
+            foodConsumed: todayEmissions?.foodConsumed ?? 0,
+            waterBottlesConsumed: todayEmissions?.waterBottlesConsumed ?? 0,
+            ateLocalOrSeasonalFood: todayEmissions?.ateLocalOrSeasonalFood ?? false,
+        },
+        digital: {
+            pagesPrinted: todayEmissions?.pagesPrinted ?? 0,
+            videoCallHours: todayEmissions?.videoCallHours ?? 0,
+            cloudStorageGb: todayEmissions?.cloudStorageGb ?? 0,
+        },
     });
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState("");
+    const router = useRouter();
+
+    // ✅ STEP 2: SYNC the form's state if `todayEmissions` changes after the initial render.
+    // This is crucial for keeping the form's "memory" up to date.
+     // The dependency array ensures this runs whenever todayEmissions changes.
 
     // ✅ define categories *inside* the component before using it
     const categories: { name: string; id: TabId; icon: JSX.Element; value: number }[] = [
-        { name: 'Transport', id: 'transport', icon: <Footprints size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.transport ?? 0) },
-        { name: 'Energy', id: 'energy', icon: <Zap size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.energy ?? 0) },
-        { name: 'Food', id: 'food', icon: <Apple size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.food ?? 0) },
-        { name: 'Digital', id: 'digital', icon: <Monitor size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.digital ?? 0) },
+        { name: 'Transport', id: 'transport', icon: <Footprints size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.transportEmissions ?? 0) },
+        { name: 'Energy', id: 'energy', icon: <Zap size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.energyEmissions ?? 0) },
+        { name: 'Food', id: 'food', icon: <Apple size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.foodEmissions ?? 0) },
+        { name: 'Digital', id: 'digital', icon: <Monitor size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.digitalEmissions ?? 0) },
     ];
+    
+    useEffect(() => {
+        // Only update if todayEmissions actually has data.
+        if (todayEmissions) {
+            setFormData({
+                transport: {
+                    carDistanceKms: todayEmissions.carDistanceKms ?? 0,
+                    carType: todayEmissions.carType ?? "PETROL",
+                    publicTransportKms: todayEmissions.publicTransportKms ?? 0,
+                    flightKms: todayEmissions.flightKms ?? 0,
+                    cyclingWalkingKms: todayEmissions.cyclingWalkingKms ?? 0,
+                },
+                energy: {
+                    officeHours: todayEmissions.officeHours ?? 0,
+                    emissionFactor: todayEmissions.emissionFactor ?? 0,
+                    electricityBill: todayEmissions.electricityBill ?? 0,
+                },
+                food: {
+                    diet: todayEmissions.diet ?? "MIXED",
+                    foodConsumed: todayEmissions.foodConsumed ?? 0,
+                    waterBottlesConsumed: todayEmissions.waterBottlesConsumed ?? 0,
+                    ateLocalOrSeasonalFood: todayEmissions.ateLocalOrSeasonalFood ?? false,
+                },
+                digital: {
+                    pagesPrinted: todayEmissions.pagesPrinted ?? 0,
+                    videoCallHours: todayEmissions.videoCallHours ?? 0,
+                    cloudStorageGb: todayEmissions.cloudStorageGb ?? 0,
+                },
+            });
+        }
+    }, [todayEmissions]);
 
     const handleChange = (tab: TabId, field: string, value: any) => {
         setFormData(prev => ({
@@ -70,20 +125,29 @@ const CalculatorView = ({ todayEmissions }) => {
         setSaving(true);
         setMessage("");
         try {
-            const res = await fetch("/api/emissions", {
+            const res = await fetch("/api/emissions", { // Ensure this path is correct
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: 'include',
                 body: JSON.stringify(formData),
             });
-            if (!res.ok) throw new Error("Failed to save");
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || "Failed to save data.");
+            }
             setMessage("Saved successfully ✅");
+            
+            // Use router.refresh() to refetch server data and update the component
+            router.refresh(); 
+
         } catch (err) {
             console.error(err);
-            setMessage("Error saving ❌");
+            setMessage(`Error: ${err.message} ❌`);
         } finally {
             setSaving(false);
         }
     };
+    
 
     const renderForm = () => {
         switch (activeTab) {
@@ -426,6 +490,12 @@ export default function DashboardPage() {
                         className={`px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${view === 'charts' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         Charts
+                    </button>
+                    <button
+                    onClick= {() => setView('ChatBot')}
+                    className={`px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${view === 'chatbot' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                    >
+                        Chat
                     </button>
                 </div>
 
