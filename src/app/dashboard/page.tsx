@@ -3,11 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
-    BarChart, Droplet, Leaf, Footprints, Zap, Apple, Monitor,
-    TrendingUp, Sun, PieChart, Target, ArrowUp, ArrowDown,
+    BarChart as BarIcon, Droplet, Leaf, Footprints, Zap, Apple, Monitor,
+    TrendingUp, Sun, PieChart as PieIcon, Target, ArrowUp, ArrowDown,
     Link
 } from 'lucide-react';
 import JSX from 'react/jsx-runtime';
+
 
 // --- REUSABLE SUB-COMPONENTS ---
 
@@ -67,6 +68,14 @@ const CalculatorView = ({ todayEmissions }) => {
             cloudStorageGb: todayEmissions?.cloudStorageGb ?? 0,
         },
     });
+
+    const [added, setAdded] = useState<{ [K in TabId]?: boolean }>({
+        transport: false,
+        energy: false,
+        food: false,
+        digital: false,
+    });
+
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState("");
     const router = useRouter();
@@ -76,77 +85,48 @@ const CalculatorView = ({ todayEmissions }) => {
      // The dependency array ensures this runs whenever todayEmissions changes.
 
     // ✅ define categories *inside* the component before using it
-    const categories: { name: string; id: TabId; icon: JSX.Element; value: number }[] = [
-        { name: 'Transport', id: 'transport', icon: <Footprints size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.transportEmissions ?? 0) },
-        { name: 'Energy', id: 'energy', icon: <Zap size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.energyEmissions ?? 0) },
-        { name: 'Food', id: 'food', icon: <Apple size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.foodEmissions ?? 0) },
-        { name: 'Digital', id: 'digital', icon: <Monitor size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.digitalEmissions ?? 0) },
-    ];
+      const categories: { name: string; id: TabId; icon: JSX.Element; value: number }[] = [
+    { name: 'Transport', id: 'transport', icon: <Footprints size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.transportEmissions ?? 0) },
+    { name: 'Energy', id: 'energy', icon: <Zap size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.energyEmissions ?? 0) },
+    { name: 'Food', id: 'food', icon: <Apple size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.foodEmissions ?? 0) },
+    { name: 'Digital', id: 'digital', icon: <Monitor size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.digitalEmissions ?? 0) },
+  ];
     
-    useEffect(() => {
-        // Only update if todayEmissions actually has data.
-        if (todayEmissions) {
-            setFormData({
-                transport: {
-                    carDistanceKms: todayEmissions.carDistanceKms ?? 0,
-                    carType: todayEmissions.carType ?? "PETROL",
-                    publicTransportKms: todayEmissions.publicTransportKms ?? 0,
-                    flightKms: todayEmissions.flightKms ?? 0,
-                    cyclingWalkingKms: todayEmissions.cyclingWalkingKms ?? 0,
-                },
-                energy: {
-                    officeHours: todayEmissions.officeHours ?? 0,
-                    emissionFactor: todayEmissions.emissionFactor ?? 0,
-                    electricityBill: todayEmissions.electricityBill ?? 0,
-                },
-                food: {
-                    diet: todayEmissions.diet ?? "MIXED",
-                    foodConsumed: todayEmissions.foodConsumed ?? 0,
-                    waterBottlesConsumed: todayEmissions.waterBottlesConsumed ?? 0,
-                    ateLocalOrSeasonalFood: todayEmissions.ateLocalOrSeasonalFood ?? false,
-                },
-                digital: {
-                    pagesPrinted: todayEmissions.pagesPrinted ?? 0,
-                    videoCallHours: todayEmissions.videoCallHours ?? 0,
-                    cloudStorageGb: todayEmissions.cloudStorageGb ?? 0,
-                },
-            });
-        }
-    }, [todayEmissions]);
-
     const handleChange = (tab: TabId, field: string, value: any) => {
-        setFormData(prev => ({
-            ...prev,
-            [tab]: { ...prev[tab], [field]: value }
-        }));
-    };
+    setFormData(prev => ({
+      ...prev,
+      [tab]: { ...prev[tab], [field]: value }
+    }));
+  };
 
-    const handleSave = async () => {
-        setSaving(true);
-        setMessage("");
-        try {
-            const res = await fetch("/api/emissions", { // Ensure this path is correct
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: 'include',
-                body: JSON.stringify(formData),
-            });
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || "Failed to save data.");
-            }
-            setMessage("Saved successfully ✅");
-            
-            // Use router.refresh() to refetch server data and update the component
-            router.refresh(); 
+  const handleAdd = (tab: TabId) => {
+    setAdded(prev => ({ ...prev, [tab]: true }));
+    setMessage(`${tab.charAt(0).toUpperCase() + tab.slice(1)} added ✅`);
+  };
 
-        } catch (err) {
-            console.error(err);
-            setMessage(`Error: ${err.message} ❌`);
-        } finally {
-            setSaving(false);
-        }
-    };
+      const handleSubmitAll = async () => {
+    setSaving(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/emissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to save data.");
+      }
+      setMessage("All data submitted successfully 🎉");
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+      setMessage(`Error: ${err.message} ❌`);
+    } finally {
+      setSaving(false);
+    }
+  };
     
 
     const renderForm = () => {
@@ -194,6 +174,13 @@ const CalculatorView = ({ todayEmissions }) => {
                             onChange={(e) => handleChange("transport", "cyclingWalkingKms", Number(e.target.value))}
                             className="w-full p-2 border rounded mb-4"
                         />
+                        <button
+                            type='button'
+                            onClick={() => handleAdd("transport")}
+                            className='px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700'
+                        >Add Transport
+                        </button>
+                        {added.transport && <span className='mt-2 text-green-600 text-sm'>Transport data added ✅</span>}
                     </div>
                 );
             case "energy":
@@ -220,6 +207,13 @@ const CalculatorView = ({ todayEmissions }) => {
                             onChange={(e) => handleChange("energy", "emissionFactor", Number(e.target.value))}
                             className="w-full p-2 border rounded mb-4"
                         />
+                        <button
+                            type='button'
+                            onClick={() => handleAdd("energy")}
+                            className='px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700'
+                        >Add Energy
+                        </button>
+                        {added.energy && <span className='mt-2 text-green-600 text-sm'>Energy data added ✅</span>}
                     </div>
                 );
 
@@ -238,6 +232,13 @@ const CalculatorView = ({ todayEmissions }) => {
                             <option value="MIXED">Mixed</option>
                             <option value="HEAVY_MEAT">Heavy Meat</option>
                         </select>
+                        <label className="block mb-2">Food Consumed (kg)</label>
+                        <input 
+                            type='number'
+                            value={formData.food.foodConsumed}
+                            onChange={(e) => handleChange("food", "foodConsumed", Number(e.target.value))}
+                            className='w-full p-2 border rounded mb-4'
+                        />
                         <label className="block mb-2">Water Bottles Consumed</label>
                         <input
                             type="number"
@@ -253,6 +254,13 @@ const CalculatorView = ({ todayEmissions }) => {
                             />
                             <span>Ate local/seasonal food</span>
                         </label>
+                        <button
+                            type='button'
+                            onClick={() => handleAdd("food")}
+                            className='px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mt-4'
+                        >Add Food
+                        </button>
+                        {added.food && <span className='mt-2 text-green-600 text-sm'>Food data added ✅</span>}
                     </div>
                 );
             case "digital":
@@ -279,7 +287,15 @@ const CalculatorView = ({ todayEmissions }) => {
                             onChange={(e) => handleChange("digital", "cloudStorageGb", Number(e.target.value))}
                             className="w-full p-2 border rounded mb-4"
                         />
+                        <button
+                            type='button'
+                            onClick={() => handleAdd("digital")}
+                            className='px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700'
+                        >Add Digital
+                        </button>
+                        {added.digital && <span className='mt-2 text-green-600 text-sm'>Digital data added ✅</span>}
                     </div>
+                    
                 );
         }
     };
@@ -292,7 +308,7 @@ const CalculatorView = ({ todayEmissions }) => {
                     <p className="text-gray-600">Fill in your activities category by category</p>
                 </div>
                 <div className="text-right mt-4 md:mt-0">
-                    <p className="text-3xl font-bold text-green-600">{Number(todayEmissions?.total ?? 0).toFixed(2)} kg</p>
+                    <p className="text-3xl font-bold text-green-600">{Number(todayEmissions?.totalEmissions ?? 0).toFixed(2)} kg</p>
                 </div>
             </div>
 
@@ -306,34 +322,26 @@ const CalculatorView = ({ todayEmissions }) => {
                     >
                         {cat.icon}
                         <p className="font-semibold text-black mt-2">{cat.name}</p>
-                        <p className="font-bold text-black text-lg">{cat.value.toFixed(1)} kg</p>
+                        <p className="font-bold text-black text-lg">{cat.value.toFixed(2)} kg</p>
                     </div>
                 ))}
             </div>
 
             {/* Form */}
-            <form
-                onSubmit={(e) => {
-                    e.preventDefault();
-                    handleSave();
-                }}
-                className="p-6 border rounded-lg bg-gray-50"
-            >
+            <div className='p-6 border rounded-lg bg-gray-50'>
                 {renderForm()}
-                <button
-                    type="submit"
-                    disabled={saving}
-                    className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            </div>
+            <button
+                onClick={handleSubmitAll}
+                disabled={saving}
+                className='mt-6 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700'
                 >
-                    {saving ? "Saving..." : "Save"}
-                </button>
-                {message && <p className="mt-2 text-sm">{message}</p>}
-            </form>
+                    {saving ? 'Saving...' : 'Submit All'}
+            </button>   
+                {message && <p className='mt-2 text-sm px-6 py-3'>{message}</p>}
         </div>
     );
 };
-
-
 
 const ChartsView = () => {
     const [activeChart, setActiveChart] = useState('weekly');
@@ -341,7 +349,7 @@ const ChartsView = () => {
     const chartOptions = [
         { name: 'Weekly Trend', id: 'weekly', icon: <TrendingUp /> },
         { name: 'Daily Progress', id: 'daily', icon: <Sun /> },
-        { name: 'Category Breakdown', id: 'category', icon: <PieChart /> },
+        { name: 'Category Breakdown', id: 'category', icon: <PieIcon /> },
         { name: 'Goal Comparison', id: 'goal', icon: <Target /> },
     ];
 
@@ -366,9 +374,6 @@ const ChartsView = () => {
         </div>
     );
 };
-
-
-// --- MAIN DASHBOARD COMPONENT ---
 
 export default function DashboardPage() {
     const [view, setView] = useState('calculator'); // 'calculator' or 'charts'
@@ -443,11 +448,11 @@ export default function DashboardPage() {
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <SummaryCard
-                        icon={<BarChart className="text-green-600" />}
+                        icon={<BarIcon className="text-green-600" />}
                         title="This Week"
                         value={summary.thisWeekEmissions.toFixed(2)}
                         unit="kg"
-                        description="15.0 kg under goal"
+                        description="90.0 kg goal"
                         bgColor="bg-green-100"
                     />
                     <SummaryCard

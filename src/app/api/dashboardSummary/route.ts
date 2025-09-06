@@ -3,12 +3,10 @@ import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import {
-  getWeekDateRange,
   getSundayWeekRange,
   calculateStreak,
   getMonthDateRange,
 } from "@/lib/dashboard-helpers";
-//import { Jersey_15 } from "next/font/google";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -22,9 +20,7 @@ async function getUserIdFromToken() {
   if (!token) return null;
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET as string) as unknown as {
-      userId: string;
-    };
+    const decoded = jwt.verify(token, JWT_SECRET as string) as { userId: string };
     return decoded.userId;
   } catch {
     return null;
@@ -74,7 +70,6 @@ async function backfillEmissions(userId: string) {
         energyEmissions: avg("energyEmissions"),
         digitalEmissions: avg("digitalEmissions"),
         totalEmissions: avg("totalEmissions"),
-        //autoFilled: true, // <--- optional flag, add this column if you want
       },
     });
 
@@ -100,6 +95,9 @@ export async function GET() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const endOfToday = new Date(today);
+    endOfToday.setHours(23, 59, 59, 999);
+
     // --- Fetch in parallel ---
     const [allEntries, thisWeekAggregate, todayEmissionsData] =
       await Promise.all([
@@ -114,9 +112,14 @@ export async function GET() {
           },
           _sum: { totalEmissions: true },
         }),
-
         prisma.emissionEntry.findFirst({
-          where: { userId, date: today },
+          where: {
+            userId,
+            date: {
+              gte: today,
+              lte: endOfToday,
+            },
+          },
         }),
       ]);
 
@@ -156,11 +159,11 @@ export async function GET() {
         streak,
       },
       todayEmissions: {
-        transport: todayEmissionsData?.transportEmissions || 0,
-        energy: todayEmissionsData?.energyEmissions || 0,
-        food: todayEmissionsData?.foodEmissions || 0,
-        digital: todayEmissionsData?.digitalEmissions || 0,
-        total: todayEmissionsData?.totalEmissions || 0,
+        transportEmissions: todayEmissionsData?.transportEmissions || 0,
+        energyEmissions: todayEmissionsData?.energyEmissions || 0,
+        foodEmissions: todayEmissionsData?.foodEmissions || 0,
+        digitalEmissions: todayEmissionsData?.digitalEmissions || 0,
+        totalEmissions: todayEmissionsData?.totalEmissions || 0,
       },
     };
 
