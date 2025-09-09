@@ -33,8 +33,20 @@ export function getSundayWeekRange(): { gte: Date, lt: Date } {
     return { gte: start, lt: end };
 }
 
-export function calculateStreak(entries: { date: Date }[]): number {
+export function calculateStreak(entries: { date: Date, autoFilled?: boolean }[]): number {
     if (entries.length === 0) {
+        return 0;
+    }
+
+    const mre = entries[0];
+    if (mre.autoFilled) {
+        return 0;
+    } 
+
+    // Filter out auto-filled entries
+    const realEntries = entries.filter(entry => !entry.autoFilled);
+
+    if (realEntries.length === 0) {
         return 0;
     }
 
@@ -42,39 +54,38 @@ export function calculateStreak(entries: { date: Date }[]): number {
     let today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Check if the most recent entry is today or yesterday
-    const mostRecentEntryDate = new Date(entries[0].date);
-    mostRecentEntryDate.setHours(0, 0, 0, 0);
+    const mostRecentEntry = realEntries[0];
+    const mostRecentDate = new Date(mostRecentEntry.date);
+    mostRecentDate.setHours(0, 0, 0, 0);
 
-    const diffTime = today.getTime() - mostRecentEntryDate.getTime();
+    const diffTime = today.getTime() - mostRecentDate.getTime();
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays > 1) {
-        return 0; // Streak is broken if the last entry was before yesterday
+        return 0; // streak broken if last real entry wasn't today or yesterday
     }
-    
+
     streak = 1;
 
-    // Loop through the rest of the entries
-    for (let i = 1; i < entries.length; i++) {
-        const currentEntryDate = new Date(entries[i-1].date);
-        currentEntryDate.setHours(0, 0, 0, 0);
-        
-        const previousEntryDate = new Date(entries[i].date);
-        previousEntryDate.setHours(0, 0, 0, 0);
-        
-        const dayDifference = (currentEntryDate.getTime() - previousEntryDate.getTime()) / (1000 * 3600 * 24);
+    for (let i = 1; i < realEntries.length; i++) {
+        const current = new Date(realEntries[i - 1].date);
+        current.setHours(0, 0, 0, 0);
 
-        if (dayDifference === 1) {
+        const previous = new Date(realEntries[i].date);
+        previous.setHours(0, 0, 0, 0);
+
+        const diff = (current.getTime() - previous.getTime()) / (1000 * 60 * 60 * 24);
+
+        if (diff === 1) {
             streak++;
         } else {
-            // As soon as a gap is found, the streak ends
-            break; 
+            break; // streak ends
         }
     }
 
     return streak;
 }
+
 
 export function getMonthDateRange(offset: number = 0): { gte: Date, lte: Date } {
   const now = new Date();

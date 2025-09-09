@@ -7,10 +7,13 @@ import {
     TrendingUp, Sun, PieChart as PieIcon, Target, ArrowUp, ArrowDown,
     Link
 } from 'lucide-react';
+import {
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    PieChart, Pie, Cell, Legend, BarChart, Bar,
+} from "recharts";
 import JSX from 'react/jsx-runtime';
 
-
-// --- REUSABLE SUB-COMPONENTS ---
+const COLORS = ["#22c55e", "#f59e0b", "#3b82f6", "#ef4444"];
 
 type SummaryCardProps = {
     icon: React.ReactNode;
@@ -54,8 +57,6 @@ const SummaryCard = ({
         </div>
     );
 };
-
-// --- PLACEHOLDER COMPONENTS (to be built out) ---
 
 type TodayEmissions = {
     carDistanceKms?: number;
@@ -123,55 +124,55 @@ const CalculatorView = ({ todayEmissions }: { todayEmissions?: TodayEmissions })
 
     // ✅ STEP 2: SYNC the form's state if `todayEmissions` changes after the initial render.
     // This is crucial for keeping the form's "memory" up to date.
-     // The dependency array ensures this runs whenever todayEmissions changes.
+    // The dependency array ensures this runs whenever todayEmissions changes.
 
     // ✅ define categories *inside* the component before using it
-      const categories: { name: string; id: TabId; icon: JSX.Element; value: number }[] = [
-    { name: 'Transport', id: 'transport', icon: <Footprints size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.transportEmissions ?? 0) },
-    { name: 'Energy', id: 'energy', icon: <Zap size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.energyEmissions ?? 0) },
-    { name: 'Food', id: 'food', icon: <Apple size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.foodEmissions ?? 0) },
-    { name: 'Digital', id: 'digital', icon: <Monitor size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.digitalEmissions ?? 0) },
-  ];
-    
+    const categories: { name: string; id: TabId; icon: JSX.Element; value: number }[] = [
+        { name: 'Transport', id: 'transport', icon: <Footprints size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.transportEmissions ?? 0) },
+        { name: 'Energy', id: 'energy', icon: <Zap size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.energyEmissions ?? 0) },
+        { name: 'Food', id: 'food', icon: <Apple size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.foodEmissions ?? 0) },
+        { name: 'Digital', id: 'digital', icon: <Monitor size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.digitalEmissions ?? 0) },
+    ];
+
     const handleChange = (tab: TabId, field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [tab]: { ...prev[tab], [field]: value }
-    }));
-  };
+        setFormData(prev => ({
+            ...prev,
+            [tab]: { ...prev[tab], [field]: value }
+        }));
+    };
 
-  const handleAdd = (tab: TabId) => {
-    setAdded(prev => ({ ...prev, [tab]: true }));
-    setMessage(`${tab.charAt(0).toUpperCase() + tab.slice(1)} added ✅`);
-  };
+    const handleAdd = (tab: TabId) => {
+        setAdded(prev => ({ ...prev, [tab]: true }));
+        setMessage(`${tab.charAt(0).toUpperCase() + tab.slice(1)} added ✅`);
+    };
 
-      const handleSubmitAll = async () => {
-    setSaving(true);
-    setMessage("");
-    try {
-      const res = await fetch("/api/emissions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to save data.");
-      }
-      setMessage("All data submitted successfully 🎉");
-      router.refresh();
-    } catch (err) {
-      console.error(err);
-      const errorMessage = typeof err === "object" && err !== null && "message" in err
-        ? (err as { message: string }).message
-        : String(err);
-      setMessage(`Error: ${errorMessage} ❌`);
-    } finally {
-      setSaving(false);
-    }
-  };
-    
+    const handleSubmitAll = async () => {
+        setSaving(true);
+        setMessage("");
+        try {
+            const res = await fetch("/api/emissions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(formData),
+            });
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || "Failed to save data.");
+            }
+            setMessage("All data submitted successfully 🎉");
+            router.refresh();
+        } catch (err) {
+            console.error(err);
+            const errorMessage = typeof err === "object" && err !== null && "message" in err
+                ? (err as { message: string }).message
+                : String(err);
+            setMessage(`Error: ${errorMessage} ❌`);
+        } finally {
+            setSaving(false);
+        }
+    };
+
 
     const renderForm = () => {
         switch (activeTab) {
@@ -277,7 +278,7 @@ const CalculatorView = ({ todayEmissions }: { todayEmissions?: TodayEmissions })
                             <option value="HEAVY_MEAT">Heavy Meat</option>
                         </select>
                         <label className="block mb-2">Food Consumed (kg)</label>
-                        <input 
+                        <input
                             type='number'
                             value={formData.food.foodConsumed}
                             onChange={(e) => handleChange("food", "foodConsumed", Number(e.target.value))}
@@ -339,7 +340,7 @@ const CalculatorView = ({ todayEmissions }: { todayEmissions?: TodayEmissions })
                         </button>
                         {added.digital && <span className='mt-2 text-green-600 text-sm'>Digital data added ✅</span>}
                     </div>
-                    
+
                 );
         }
     };
@@ -379,23 +380,122 @@ const CalculatorView = ({ todayEmissions }: { todayEmissions?: TodayEmissions })
                 onClick={handleSubmitAll}
                 disabled={saving}
                 className='mt-6 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700'
-                >
-                    {saving ? 'Saving...' : 'Submit All'}
-            </button>   
-                {message && <p className='mt-2 text-sm px-6 py-3'>{message}</p>}
+            >
+                {saving ? 'Saving...' : 'Submit All'}
+            </button>
+            {message && <p className='mt-2 text-sm px-6 py-3'>{message}</p>}
         </div>
     );
 };
 
-const ChartsView = () => {
-    const [activeChart, setActiveChart] = useState('weekly');
+interface ChartsViewProps {
+    allEntries?: { date: string; totalEmissions: number }[];
+    todayEmissions?: TodayEmissions;
+    thisMonthTotal?: number;
+    lastMonthTotal?: number;
+}
+const ChartsView = ({
+    allEntries = [],
+    todayEmissions = {},
+    thisMonthTotal = 0,
+    lastMonthTotal = 0,
+}: ChartsViewProps) => {
 
+    const [activeChart, setActiveChart] = useState('weekly');
     const chartOptions = [
-        { name: 'Weekly Trend', id: 'weekly', icon: <TrendingUp /> },
+        { name: 'Trend', id: 'weekly', icon: <TrendingUp /> },
         { name: 'Daily Progress', id: 'daily', icon: <Sun /> },
         { name: 'Category Breakdown', id: 'category', icon: <PieIcon /> },
-        { name: 'Goal Comparison', id: 'goal', icon: <Target /> },
+        { name: 'Monthly', id: 'goal', icon: <Target /> },
     ];
+
+    const weeklyData = allEntries.map((e) => ({
+        date: new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        emission: e.totalEmissions,
+    }));
+
+    const breakdownData = [
+        { name: 'Transport', value: Number(todayEmissions?.transportEmissions ?? 0)/ Number(todayEmissions?.totalEmissions ?? 0) * 100 || 0 },
+        { name: 'Energy', value: Number(todayEmissions?.energyEmissions ?? 0)/ Number(todayEmissions?.totalEmissions ?? 0) * 100 || 0 },
+        { name: 'Food', value: Number(todayEmissions?.foodEmissions ?? 0)/ Number(todayEmissions?.totalEmissions ?? 0) * 100 || 0 },
+        { name: 'Digital', value: Number(todayEmissions?.digitalEmissions ?? 0)/ Number(todayEmissions?.totalEmissions ?? 0) * 100 || 0 },
+    ];
+
+    const goalData = [
+        { name: 'This Month', value: (thisMonthTotal).toFixed(2) },
+        { name: 'Last Month', value: (lastMonthTotal).toFixed(2) },
+    ];
+
+    useEffect(() => {
+        console.log('All Entries:', allEntries);
+        console.log('Today Emissions:', todayEmissions);
+        console.log('This Month Total:', thisMonthTotal);
+        console.log('Last Month Total:', lastMonthTotal);
+    }, [allEntries, todayEmissions, thisMonthTotal, lastMonthTotal]);
+
+    const renderChart = () => {
+        switch (activeChart) {
+            case 'weekly':
+                return (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={([...weeklyData].reverse()).map(entry => ({ ...entry, emission: entry.emission.toFixed(2) }))}>
+                            <XAxis dataKey="date" />
+                            <YAxis />
+                            <Tooltip />
+                            <Line type="monotone" dataKey="emission" stroke="#4CAF50" strokeWidth={3} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                );
+            case 'daily':
+                return (
+                    <div className="flex flex-col items-center justify-center h-full">
+                        <p className="text-4xl font-bold text-green-600">
+                            {(todayEmissions?.totalEmissions ?? 0).toFixed(2)} kg
+                        </p>
+                        <p className="text-gray-500 mt-2">Total emissions today</p>
+                    </div>
+                );
+            case 'category':
+                return (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                            <Pie
+                                data={breakdownData}
+                                dataKey="value"
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={100}
+                                label={({ name, value }) =>
+                                    `${name}: ${value.toFixed(2)}%`
+                                }
+                            >
+                                {breakdownData.map((_, i) => (
+                                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip
+                                formatter={(value: number) => `${value.toFixed(2)}%`}
+                            />
+                            <Legend />
+                        </PieChart>
+                    </ResponsiveContainer>
+                );
+            case 'goal':
+                return (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={goalData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Bar dataKey="value" fill="#16a34a" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                );
+            default:
+                return <p className="text-gray-500">No chart selected</p>;
+        }
+    }
 
     return (
         <div className="bg-white p-6 rounded-2xl shadow-md animate-fade-in">
@@ -404,20 +504,37 @@ const ChartsView = () => {
                 <p className="text-gray-600">Your carbon footprint over time</p>
             </div>
             <div className="flex flex-wrap border-b mb-4">
-                {chartOptions.map(opt => (
-                    <button key={opt.id} onClick={() => setActiveChart(opt.id)} className={`flex items-center space-x-2 px-3 py-2 -mb-px rounded-t-lg font-semibold transition-colors ${activeChart === opt.id ? 'bg-green-100 text-green-700 border-b-2 border-green-500' : 'text-gray-500 hover:bg-gray-100'}`}>
+                {chartOptions.map((opt) => (
+                    <button
+                        key={opt.id}
+                        onClick={() => setActiveChart(opt.id)}
+                        className={`flex items-center space-x-2 px-3 py-2 -mb-px rounded-t-lg font-semibold transition-colors ${activeChart === opt.id
+                            ? "bg-green-100 text-green-700 border-b-2 border-green-500"
+                            : "text-gray-500 hover:bg-gray-100"
+                            }`}
+                    >
                         {opt.icon}
                         <span>{opt.name}</span>
                     </button>
                 ))}
             </div>
             <div className="mt-4 p-6 bg-gray-50 rounded-lg min-h-[300px]">
-                <h3 className="text-lg text-gray-500 font-semibold capitalize">{activeChart} View</h3>
-                <p className="text-gray-500 mt-2">The chart for '{activeChart}' will be rendered here. This is a placeholder.</p>
+                {renderChart()}
             </div>
         </div>
     );
 };
+
+const ChatBot = () => {
+    return (
+        <div className="bg-white p-6 rounded-2xl shadow-md animate-fade-in">
+            <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-800">Carbon Buddy Chat</h2>
+                <p className="text-gray-600">Ask me anything about reducing your carbon footprint!</p>
+            </div>
+        </div>
+    )
+}
 
 export default function DashboardPage() {
     const [view, setView] = useState('calculator'); // 'calculator' or 'charts'
@@ -478,10 +595,13 @@ export default function DashboardPage() {
         streak: number;
     };
 
-    const { userName, summary, todayEmissions } = data as {
+    const { userName, summary, todayEmissions, allEntries, thisMonthTotal, lastMonthTotal } = data as {
         userName: string;
         summary: Summary;
         todayEmissions?: TodayEmissions;
+        allEntries?: { date: string; totalEmissions: number }[];
+        thisMonthTotal?: number;
+        lastMonthTotal?: number;
     };
 
     return (
@@ -492,7 +612,7 @@ export default function DashboardPage() {
             >
                 Logout
             </button>
-            
+
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <header className="mb-8">
@@ -538,31 +658,47 @@ export default function DashboardPage() {
                 </div>
 
                 {/* View Toggler */}
-                <div className="flex justify-center mb-6 bg-white p-2 rounded-xl shadow-sm w-fit mx-auto">
+                <div className="flex flex-wrap justify-center gap-3 mb-6 bg-white p-2 rounded-xl shadow-sm w-full max-w-md mx-auto">
                     <button
                         onClick={() => setView('calculator')}
-                        className={`px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${view === 'calculator' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                        className={`flex-1 min-w-[100px] px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-center ${view === 'calculator' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
                     >
                         Calculator
                     </button>
                     <button
                         onClick={() => setView('charts')}
-                        className={`px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${view === 'charts' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                        className={`flex-1 min-w-[100px] px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-center ${view === 'charts' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
                     >
                         Charts
                     </button>
                     <button
-                    onClick= {() => setView('ChatBot')}
-                    className={`px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${view === 'chatbot' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                        onClick={() => setView('chatbot')}
+                        className={`flex-1 min-w-[100px] px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-center ${view === 'chatbot' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
                     >
                         Chat
                     </button>
                 </div>
 
+
                 {/* Dynamic Content */}
                 <main>
-                    {view === 'calculator' ? <CalculatorView todayEmissions={todayEmissions} /> : <ChartsView />}
+                    {{
+                        calculator: <CalculatorView todayEmissions={todayEmissions} />,
+                        charts: (
+                            <ChartsView
+                                allEntries={allEntries}
+                                todayEmissions={todayEmissions}
+                                thisMonthTotal={thisMonthTotal}
+                                lastMonthTotal={lastMonthTotal}
+                            />
+                        ),
+                        chatbot: <ChatBot />
+                    }[view]}
                 </main>
+
             </div>
             <style jsx global>{`
                 .animate-fade-in {

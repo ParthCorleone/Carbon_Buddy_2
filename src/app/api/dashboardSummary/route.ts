@@ -70,6 +70,7 @@ async function backfillEmissions(userId: string) {
         energyEmissions: avg("energyEmissions"),
         digitalEmissions: avg("digitalEmissions"),
         totalEmissions: avg("totalEmissions"),
+        autoFilled: true,
       },
     });
 
@@ -85,7 +86,7 @@ export async function GET() {
 
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
+    if (!user) {  
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
@@ -93,10 +94,10 @@ export async function GET() {
     await backfillEmissions(userId);
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
 
     const endOfToday = new Date(today);
-    endOfToday.setHours(23, 59, 59, 999);
+    endOfToday.setUTCHours(23, 59, 59, 999);
 
     // --- Fetch in parallel ---
     const [allEntries, thisWeekAggregate, todayEmissionsData] =
@@ -165,6 +166,12 @@ export async function GET() {
         digitalEmissions: todayEmissionsData?.digitalEmissions || 0,
         totalEmissions: todayEmissionsData?.totalEmissions || 0,
       },
+      allEntries: allEntries.map((e) => ({
+        date: e.date,
+        totalEmissions: e.totalEmissions,
+      })),
+      thisMonthTotal,
+      lastMonthTotal,
     };
 
     return NextResponse.json(response);

@@ -64,6 +64,7 @@ model EmissionEntry {
   foodEmissions           Float    @default(0)
   digitalEmissions        Float    @default(0)
   totalEmissions          Float    @default(0)
+  autoFilled Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
