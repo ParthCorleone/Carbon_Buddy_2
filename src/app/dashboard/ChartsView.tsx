@@ -57,14 +57,7 @@ const ChartsView = ({
         { name: 'This Month', value: (thisMonthTotal).toFixed(2) },
         { name: 'Last Month', value: (lastMonthTotal).toFixed(2) },
     ];
-
-    useEffect(() => {
-        console.log('All Entries:', allEntries);
-        console.log('Today Emissions:', todayEmissions);
-        console.log('This Month Total:', thisMonthTotal);
-        console.log('Last Month Total:', lastMonthTotal);
-    }, [allEntries, todayEmissions, thisMonthTotal, lastMonthTotal]);
-
+    
     const renderChart = () => {
         switch (activeChart) {
             case 'weekly':
