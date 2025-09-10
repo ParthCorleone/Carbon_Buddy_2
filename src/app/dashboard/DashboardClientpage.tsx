@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import JSX from 'react/jsx-runtime';
 
-const COLORS = ["#22c55e", "#f59e0b", "#3b82f6", "#ef4444"];
+const COLORS = ["#4CAF50", "#81C784", "#AED581", "#C5E1A5"];
 
 type SummaryCardProps = {
     icon: React.ReactNode;
@@ -84,49 +84,72 @@ type TodayEmissions = {
 const CalculatorView = ({ todayEmissions }: { todayEmissions?: TodayEmissions }) => {
     type TabId = 'transport' | 'energy' | 'food' | 'digital';
 
-    const [activeTab, setActiveTab] = useState<TabId>('transport');
-    const [formData, setFormData] = useState({
-        transport: {
-            carDistanceKms: todayEmissions?.carDistanceKms ?? 0,
-            carType: todayEmissions?.carType ?? "PETROL",
-            publicTransportKms: todayEmissions?.publicTransportKms ?? 0,
-            flightKms: todayEmissions?.flightKms ?? 0,
-            cyclingWalkingKms: todayEmissions?.cyclingWalkingKms ?? 0,
-        },
-        energy: {
-            officeHours: todayEmissions?.officeHours ?? 0,
-            emissionFactor: todayEmissions?.emissionFactor ?? 0,
-            electricityBill: todayEmissions?.electricityBill ?? 0,
-        },
-        food: {
-            diet: todayEmissions?.diet ?? "MIXED",
-            foodConsumed: todayEmissions?.foodConsumed ?? 0,
-            waterBottlesConsumed: todayEmissions?.waterBottlesConsumed ?? 0,
-            ateLocalOrSeasonalFood: todayEmissions?.ateLocalOrSeasonalFood ?? false,
-        },
-        digital: {
-            pagesPrinted: todayEmissions?.pagesPrinted ?? 0,
-            videoCallHours: todayEmissions?.videoCallHours ?? 0,
-            cloudStorageGb: todayEmissions?.cloudStorageGb ?? 0,
-        },
+    // Load from localStorage if available
+    const [formData, setFormData] = useState(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("carbonFormData");
+            if (saved) return JSON.parse(saved);
+        }
+        return {
+            transport: {
+                carDistanceKms: todayEmissions?.carDistanceKms ?? 0,
+                carType: todayEmissions?.carType ?? "PETROL",
+                publicTransportKms: todayEmissions?.publicTransportKms ?? 0,
+                flightKms: todayEmissions?.flightKms ?? 0,
+                cyclingWalkingKms: todayEmissions?.cyclingWalkingKms ?? 0,
+            },
+            energy: {
+                officeHours: todayEmissions?.officeHours ?? 0,
+                emissionFactor: todayEmissions?.emissionFactor ?? 0,
+                electricityBill: todayEmissions?.electricityBill ?? 0,
+            },
+            food: {
+                diet: todayEmissions?.diet ?? "MIXED",
+                foodConsumed: todayEmissions?.foodConsumed ?? 0,
+                waterBottlesConsumed: todayEmissions?.waterBottlesConsumed ?? 0,
+                ateLocalOrSeasonalFood: todayEmissions?.ateLocalOrSeasonalFood ?? false,
+            },
+            digital: {
+                pagesPrinted: todayEmissions?.pagesPrinted ?? 0,
+                videoCallHours: todayEmissions?.videoCallHours ?? 0,
+                cloudStorageGb: todayEmissions?.cloudStorageGb ?? 0,
+            },
+        };
     });
 
-    const [added, setAdded] = useState<{ [K in TabId]?: boolean }>({
-        transport: false,
-        energy: false,
-        food: false,
-        digital: false,
+    // Save formData to localStorage on change
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            localStorage.setItem("carbonFormData", JSON.stringify(formData));
+        }
+    }, [formData]);
+
+    const [activeTab, setActiveTab] = useState<TabId>('transport');
+    const [added, setAdded] = useState<{ [K in TabId]?: boolean }>(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("carbonAddedTabs");
+            if (saved) return JSON.parse(saved);
+        }
+        return {
+            transport: false,
+            energy: false,
+            food: false,
+            digital: false,
+        };
     });
+
+    // Save added state to localStorage on change
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            localStorage.setItem("carbonAddedTabs", JSON.stringify(added));
+        }
+    }, [added]);
 
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState("");
     const router = useRouter();
 
-    // ✅ STEP 2: SYNC the form's state if `todayEmissions` changes after the initial render.
-    // This is crucial for keeping the form's "memory" up to date.
-    // The dependency array ensures this runs whenever todayEmissions changes.
 
-    // ✅ define categories *inside* the component before using it
     const categories: { name: string; id: TabId; icon: JSX.Element; value: number }[] = [
         { name: 'Transport', id: 'transport', icon: <Footprints size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.transportEmissions ?? 0) },
         { name: 'Energy', id: 'energy', icon: <Zap size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.energyEmissions ?? 0) },
@@ -141,6 +164,7 @@ const CalculatorView = ({ todayEmissions }: { todayEmissions?: TodayEmissions })
         }));
     };
 
+    // Only mark the tab as added, don't clear data
     const handleAdd = (tab: TabId) => {
         setAdded(prev => ({ ...prev, [tab]: true }));
         setMessage(`${tab.charAt(0).toUpperCase() + tab.slice(1)} added ✅`);
@@ -161,7 +185,23 @@ const CalculatorView = ({ todayEmissions }: { todayEmissions?: TodayEmissions })
                 throw new Error(errorData.message || "Failed to save data.");
             }
             setMessage("All data submitted successfully 🎉");
-            router.refresh();
+
+            // Fetch latest dashboard data and update parent state
+            if (typeof window !== "undefined") {
+                localStorage.removeItem("carbonFormData");
+                localStorage.removeItem("carbonAddedTabs");
+            }
+            setAdded({
+                transport: false,
+                energy: false,
+                food: false,
+                digital: false,
+            });
+
+            // Call parent's fetchData function if provided
+            if (typeof window !== "undefined" && window.dispatchEvent) {
+                window.dispatchEvent(new Event("dashboardDataUpdated"));
+            }
         } catch (err) {
             console.error(err);
             const errorMessage = typeof err === "object" && err !== null && "message" in err
@@ -178,55 +218,55 @@ const CalculatorView = ({ todayEmissions }: { todayEmissions?: TodayEmissions })
         switch (activeTab) {
             case "transport":
                 return (
-                    <div className='text-black'>
-                        <label className="block mb-2">Car Distance (kms)</label>
-                        <input
-                            type="number"
-                            value={formData.transport.carDistanceKms}
-                            onChange={(e) => handleChange("transport", "carDistanceKms", Number(e.target.value))}
-                            className="w-full p-2 border rounded mb-4"
-                        />
-                        <label className="block mb-2">Car Type</label>
-                        <select
-                            value={formData.transport.carType}
-                            onChange={(e) => handleChange("transport", "carType", e.target.value)}
-                            className="w-full p-2 border rounded mb-4"
-                        >
-                            <option value="">Select</option>
-                            <option value="PETROL">Petrol</option>
-                            <option value="DIESEL">Diesel</option>
-                            <option value="HYBRID">Hybrid</option>
-                            <option value="ELECTRIC">Electric</option>
-                        </select>
-                        <label className="block mb-2">Public Transport (kms)</label>
-                        <input
-                            type="number"
-                            value={formData.transport.publicTransportKms}
-                            onChange={(e) => handleChange("transport", "publicTransportKms", Number(e.target.value))}
-                            className="w-full p-2 border rounded mb-4"
-                        />
-                        <label className="block mb-2">Flight (kms)</label>
-                        <input
-                            type="number"
-                            value={formData.transport.flightKms}
-                            onChange={(e) => handleChange("transport", "flightKms", Number(e.target.value))}
-                            className="w-full p-2 border rounded mb-4"
-                        />
-                        <label className="block mb-2">Cycling / Walking (kms)</label>
-                        <input
-                            type="number"
-                            value={formData.transport.cyclingWalkingKms || 0}
-                            onChange={(e) => handleChange("transport", "cyclingWalkingKms", Number(e.target.value))}
-                            className="w-full p-2 border rounded mb-4"
-                        />
-                        <button
-                            type='button'
-                            onClick={() => handleAdd("transport")}
-                            className='px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700'
-                        >Add Transport
-                        </button>
-                        {added.transport && <span className='mt-2 text-green-600 text-sm'>Transport data added ✅</span>}
-                    </div>
+                        <div className='text-black'>
+                            <label className="block mb-2">Car Distance (kms)</label>
+                            <input
+                                type="number"
+                                value={formData.transport.carDistanceKms}
+                                onChange={(e) => handleChange("transport", "carDistanceKms", Number(e.target.value))}
+                                className="w-full p-2 border rounded mb-4"
+                            />
+                            <label className="block mb-2">Car Type</label>
+                            <select
+                                value={formData.transport.carType}
+                                onChange={(e) => handleChange("transport", "carType", e.target.value)}
+                                className="w-full p-2 border rounded mb-4"
+                            >
+                                <option value="">Select</option>
+                                <option value="PETROL">Petrol</option>
+                                <option value="DIESEL">Diesel</option>
+                                <option value="HYBRID">Hybrid</option>
+                                <option value="ELECTRIC">Electric</option>
+                            </select>
+                            <label className="block mb-2">Public Transport (kms)</label>
+                            <input
+                                type="number"
+                                value={formData.transport.publicTransportKms}
+                                onChange={(e) => handleChange("transport", "publicTransportKms", Number(e.target.value))}
+                                className="w-full p-2 border rounded mb-4"
+                            />
+                            <label className="block mb-2">Flight (kms)</label>
+                            <input
+                                type="number"
+                                value={formData.transport.flightKms}
+                                onChange={(e) => handleChange("transport", "flightKms", Number(e.target.value))}
+                                className="w-full p-2 border rounded mb-4"
+                            />
+                            <label className="block mb-2">Cycling / Walking (kms)</label>
+                            <input
+                                type="number"
+                                value={formData.transport.cyclingWalkingKms || 0}
+                                onChange={(e) => handleChange("transport", "cyclingWalkingKms", Number(e.target.value))}
+                                className="w-full p-2 border rounded mb-4"
+                            />
+                            <button
+                                type='button'
+                                onClick={() => handleAdd("transport")}
+                                className='px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700'
+                            >Add Transport
+                            </button>
+                            {added.transport && <span className='mt-2 text-green-600 text-sm'>Transport data added ✅</span>}
+                        </div>
                 );
             case "energy":
                 return (
@@ -415,10 +455,10 @@ const ChartsView = ({
     }));
 
     const breakdownData = [
-        { name: 'Transport', value: Number(todayEmissions?.transportEmissions ?? 0)/ Number(todayEmissions?.totalEmissions ?? 0) * 100 || 0 },
-        { name: 'Energy', value: Number(todayEmissions?.energyEmissions ?? 0)/ Number(todayEmissions?.totalEmissions ?? 0) * 100 || 0 },
-        { name: 'Food', value: Number(todayEmissions?.foodEmissions ?? 0)/ Number(todayEmissions?.totalEmissions ?? 0) * 100 || 0 },
-        { name: 'Digital', value: Number(todayEmissions?.digitalEmissions ?? 0)/ Number(todayEmissions?.totalEmissions ?? 0) * 100 || 0 },
+        { name: 'Transport', value: Number(todayEmissions?.transportEmissions ?? 0) / Number(todayEmissions?.totalEmissions ?? 0) * 100 || 0 },
+        { name: 'Energy', value: Number(todayEmissions?.energyEmissions ?? 0) / Number(todayEmissions?.totalEmissions ?? 0) * 100 || 0 },
+        { name: 'Food', value: Number(todayEmissions?.foodEmissions ?? 0) / Number(todayEmissions?.totalEmissions ?? 0) * 100 || 0 },
+        { name: 'Digital', value: Number(todayEmissions?.digitalEmissions ?? 0) / Number(todayEmissions?.totalEmissions ?? 0) * 100 || 0 },
     ];
 
     const goalData = [
@@ -438,21 +478,20 @@ const ChartsView = ({
             case 'weekly':
                 return (
                     <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={([...weeklyData].reverse()).map(entry => ({ ...entry, emission: entry.emission.toFixed(2) }))}>
-                            <XAxis dataKey="date" />
-                            <YAxis />
-                            <Tooltip />
-                            <Line type="monotone" dataKey="emission" stroke="#4CAF50" strokeWidth={3} />
+                        <LineChart data={[...weeklyData].reverse().map(entry => ({ ...entry, emission: Number(entry.emission.toFixed(2)) }))}>
+                            <CartesianGrid strokeDasharray="5 5" />
+                            <XAxis dataKey="date" tick={{ fill: "#4CAF50", fontWeight: 'bold' }} />
+                            <YAxis tick={{ fill: "#4CAF50", fontWeight: 'bold' }} />
+                            <Tooltip contentStyle={{ backgroundColor: "#f9f9f9", borderRadius: "8px" }} />
+                            <Line type="monotone" dataKey="emission" stroke="#4CAF50" strokeWidth={3} dot={{ r: 5, fill: "#4CAF50" }} />
                         </LineChart>
                     </ResponsiveContainer>
                 );
             case 'daily':
                 return (
-                    <div className="flex flex-col items-center justify-center h-full">
-                        <p className="text-4xl font-bold text-green-600">
-                            {(todayEmissions?.totalEmissions ?? 0).toFixed(2)} kg
-                        </p>
-                        <p className="text-gray-500 mt-2">Total emissions today</p>
+                    <div className="flex flex-col items-center justify-center h-full py-8 bg-green-50 rounded-lg shadow-inner">
+                        <p className="text-5xl font-bold text-green-600">{(todayEmissions?.totalEmissions ?? 0).toFixed(2)} kg</p>
+                        <p className="text-gray-600 mt-2 text-lg">Total emissions today</p>
                     </div>
                 );
             case 'category':
@@ -465,30 +504,27 @@ const ChartsView = ({
                                 cx="50%"
                                 cy="50%"
                                 outerRadius={100}
-                                label={({ name, value }) =>
-                                    `${name}: ${value.toFixed(2)}%`
-                                }
+                                fill="#82ca9d"
+                                label={({ name, value }) => `${name}: ${value.toFixed(2)}%`}
                             >
                                 {breakdownData.map((_, i) => (
                                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                                 ))}
                             </Pie>
-                            <Tooltip
-                                formatter={(value: number) => `${value.toFixed(2)}%`}
-                            />
-                            <Legend />
+                            <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} />
+                            <Legend verticalAlign="bottom" height={36} />
                         </PieChart>
                     </ResponsiveContainer>
-                );
+                );  
             case 'goal':
                 return (
                     <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={goalData}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="value" fill="#16a34a" />
+                            <XAxis dataKey="name" tick={{ fill: "#4CAF50", fontWeight: 'bold' }} />
+                            <YAxis tick={{ fill: "#4CAF50", fontWeight: 'bold' }} />
+                            <Tooltip contentStyle={{ backgroundColor: "#f9f9f9", borderRadius: "8px" }} />
+                            <Bar dataKey="value" fill="#16a34a" barSize={40} />
                         </BarChart>
                     </ResponsiveContainer>
                 );
@@ -560,7 +596,6 @@ export default function DashboardPage() {
                 const response = await fetch('/api/dashboardSummary');
                 if (!response.ok) {
                     if (response.status === 401) {
-                        // You could redirect to login here: window.location.href = '/login';
                         throw new Error('Unauthorized. Please log in again.');
                     }
                     throw new Error('Failed to fetch dashboard data');
@@ -568,12 +603,20 @@ export default function DashboardPage() {
                 const summaryData = await response.json();
                 setData(summaryData);
             } catch (err) {
-                setError(err.message);
+                setError((err as Error).message);
             } finally {
                 setLoading(false);
             }
         };
         fetchData();
+
+        // Listen for updates from CalculatorView
+        const updateHandler = () => fetchData();
+        window.addEventListener("dashboardDataUpdated", updateHandler);
+
+        return () => {
+            window.removeEventListener("dashboardDataUpdated", updateHandler);
+        };
     }, []);
 
     if (loading) {
@@ -603,6 +646,72 @@ export default function DashboardPage() {
         thisMonthTotal?: number;
         lastMonthTotal?: number;
     };
+    let displayPlant = (() => {
+    if (summary.streak >= 30) {
+        return "🌳"; // Fully grown tree
+    } else if (summary.streak >= 29) {
+        return "🎄";
+    } else if (summary.streak >= 28) {
+        return "🌲";
+    } else if (summary.streak >= 27) {
+        return "🌴";
+    } else if (summary.streak >= 26) {
+        return "🍀";
+    } else if (summary.streak >= 25) {
+        return "☘️";
+    } else if (summary.streak >= 24) {
+        return "🌾";
+    } else if (summary.streak >= 23) {
+        return "🌻";
+    } else if (summary.streak >= 22) {
+        return "🌷";
+    } else if (summary.streak >= 21) {
+        return "💐";
+    } else if (summary.streak >= 20) {
+        return "🌸";
+    } else if (summary.streak >= 19) {
+        return "🏵️";
+    } else if (summary.streak >= 18) {
+        return "🌼";
+    } else if (summary.streak >= 17) {
+        return "🌺";
+    } else if (summary.streak >= 16) {
+        return "🥀";
+    } else if (summary.streak >= 15) {
+        return "🍁";
+    } else if (summary.streak >= 14) {
+        return "🍃";
+    } else if (summary.streak >= 13) {
+        return "🌱";
+    } else if (summary.streak >= 12) {
+        return "🌿";
+    } else if (summary.streak >= 11) {
+        return "☘️";
+    } else if (summary.streak >= 10) {
+        return "🍀";
+    } else if (summary.streak >= 9) {
+        return "🌾";
+    } else if (summary.streak >= 8) {
+        return "🌷";
+    } else if (summary.streak >= 7) {
+        return "🌻";
+    } else if (summary.streak >= 6) {
+        return "🌸";
+    } else if (summary.streak >= 5) {
+        return "🌼";
+    } else if (summary.streak >= 4) {
+        return "🌺";
+    } else if (summary.streak >= 3) {
+        return "🍁";
+    } else if (summary.streak >= 2) {
+        return "🍃";
+    } else if (summary.streak >= 1) {
+        return "🌱";
+    } else {
+        return "🌵"; // No streak
+    }
+});
+
 
     return (
         <div className="bg-gray-50 min-h-screen p-4 md:p-8">
@@ -616,7 +725,7 @@ export default function DashboardPage() {
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <header className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800">Welcome back, {userName}! 🌱</h1>
+                    <h1 className="text-3xl font-bold text-gray-800">Welcome back, {userName}! {displayPlant()}</h1>
                     <p className="text-gray-600 text-lg">You're doing great! Here's your carbon footprint summary.</p>
                 </header>
 
@@ -712,4 +821,3 @@ export default function DashboardPage() {
         </div>
     );
 }
-
