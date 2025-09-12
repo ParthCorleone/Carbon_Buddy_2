@@ -102,8 +102,12 @@ export default function AuthPage() {
       }
 
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -155,21 +159,19 @@ export default function AuthPage() {
           <div className="flex justify-center p-1 bg-gray-100 rounded-full">
             <button
               onClick={() => setIsSignUp(false)}
-              className={`w-1/2 py-2.5 text-sm font-semibold rounded-full transition-colors ${
-                !isSignUp
+              className={`w-1/2 py-2.5 text-sm font-semibold rounded-full transition-colors ${!isSignUp
                   ? "bg-white text-green-700 shadow"
                   : "text-gray-500 hover:bg-gray-200"
-              }`}
+                }`}
             >
               Sign In
             </button>
             <button
               onClick={() => setIsSignUp(true)}
-              className={`w-1/2 py-2.5 text-sm font-semibold rounded-full transition-colors ${
-                isSignUp
+              className={`w-1/2 py-2.5 text-sm font-semibold rounded-full transition-colors ${isSignUp
                   ? "bg-white text-green-700 shadow"
                   : "text-gray-500 hover:bg-gray-200"
-              }`}
+                }`}
             >
               Sign Up
             </button>
@@ -265,8 +267,8 @@ export default function AuthPage() {
                   {isLoading
                     ? "Processing..."
                     : isSignUp
-                    ? "Create Account"
-                    : "Sign In"}
+                      ? "Create Account"
+                      : "Sign In"}
                 </button>
               </div>
             </form>

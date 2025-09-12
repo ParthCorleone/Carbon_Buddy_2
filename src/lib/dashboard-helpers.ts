@@ -51,7 +51,7 @@ export function calculateStreak(entries: { date: Date, autoFilled?: boolean }[])
     }
 
     let streak = 0;
-    let today = new Date();
+    const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const mostRecentEntry = realEntries[0];

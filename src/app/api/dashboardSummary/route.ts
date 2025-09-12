@@ -44,10 +44,10 @@ async function backfillEmissions(userId: string) {
 
   if (!lastEntry) return;
 
-  let lastDate = new Date(lastEntry.date);
+  const lastDate = new Date(lastEntry.date);
   lastDate.setUTCHours(0, 0, 0, 0);
 
-  let current = new Date(lastDate);
+  const current = new Date(lastDate);
   current.setDate(current.getDate() + 1);
 
   while (current < today) {
