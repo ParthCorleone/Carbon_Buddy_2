@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { BarChart as BarIcon, Droplet, Leaf, TrendingUp } from 'lucide-react';
 import CalculatorView from './CalculatorView';
 import ChartsView from './ChartsView';
-import ChatView from './ChatView'; // <-- Import the new ChatView
+//import ChatView from './ChatView'; // <-- Import the new ChatView
 
 type TodayEmissions = {
     transportEmissions?: number;
@@ -205,12 +205,12 @@ export default function DashboardPage() {
                     >
                         Charts
                     </button>
-                    <button
+                    {/* <button
                         onClick={() => setView('chatbot')}
                         className={`flex-1 min-w-[100px] px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-center ${view === 'chatbot' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         Chat
-                    </button>
+                    </button> */}
                 </div>
                 <main>
                     {{
@@ -223,7 +223,7 @@ export default function DashboardPage() {
                                 lastMonthTotal={lastMonthTotal}
                             />
                         ),
-                        chatbot: <ChatView /> // <-- Use ChatView here
+                        // chatbot: <ChatView /> // <-- Use ChatView here
                     }[view]}
                 </main>
             </div>

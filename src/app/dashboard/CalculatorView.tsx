@@ -222,7 +222,7 @@ const CalculatorView = ({ todayEmissions }: { todayEmissions?: TodayEmissions })
                             onChange={(e) => handleChange("energy", "electricityBill", Number(e.target.value))}
                             className="w-full p-2 border rounded mb-4"
                         />
-                        <label className="block mb-2">Emission Factor</label>
+                        <label className="block mb-2">Emission Factor in kWh</label>
                         <input
                             type="number"
                             value={formData.energy.emissionFactor}

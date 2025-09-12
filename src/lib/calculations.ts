@@ -1,56 +1,45 @@
-// --- TYPE DEFINITIONS ---
-// Defining types here makes this module independent from the database schema.
 export type CarType = 'PETROL' | 'DIESEL' | 'HYBRID' | 'ELECTRIC';
 export type Diet = 'VEGAN' | 'VEGETARIAN' | 'MIXED' | 'HEAVY_MEAT';
 
-// --- EMISSION FACTORS (in kg CO2e) ---
 // Sources: EPA, IPCC, and other scientific studies. These are representative averages.
 
 // 1. Transport
 const EMISSION_FACTORS_TRANSPORT = {
-    // per km
     CAR: {
-        PETROL: 0.192,      // Average petrol car
-        DIESEL: 0.171,      // Average diesel car
-        HYBRID: 0.120,
-        ELECTRIC: 0.050,    // Based on average grid electricity, not zero
+        PETROL: 0.179,
+        DIESEL: 0.173,
+        HYBRID: 0.126,
+        ELECTRIC: 0.035,
     },
-    PUBLIC_TRANSPORT: 0.041, // Average for bus/local train per passenger-km
-    FLIGHTS: 0.255,          // Average for domestic short-haul flights per passenger-km
-    CYCLING_WALKING: 0.0005, // Average for cycling/walking per km
+    PUBLIC_TRANSPORT: 0.015,
+    FLIGHTS: 0.121,    
+    CYCLING_WALKING: 0.0005,
 };
 
-// 2. Energy
 const EMISSION_FACTORS_ENERGY = {
-    // Assuming average power consumption for an office worker's equipment (PC, monitor, lights)
-    // This is a simplified model.
-    AVG_KWH_PER_OFFICE_HOUR: 0.25, // kWh
+    AVG_KWH_PER_OFFICE_HOUR: 0.25,
 };
 
-// 3. Food
 const EMISSION_FACTORS_FOOD = {
-    // daily emissions
     DIET: {
-        HEAVY_MEAT: 10.24,
-        MIXED: 7.19,
-        VEGETARIAN: 3.81,
-        VEGAN: 2.89,
+        HEAVY_MEAT: 13.88,
+        MIXED: 3.26,
+        VEGETARIAN: 1.80,
+        VEGAN: 1.35,
     },
-    WATER_BOTTLE: 0.082,     // For a 0.5L plastic bottle (production & transport)
-    LOCAL_FOOD_REDUCTION: 0.20 // 20% reduction
+    WATER_BOTTLE: 0.021,
+    LOCAL_FOOD_REDUCTION: 0.12
 };
 
-// 4. Digital
 const EMISSION_FACTORS_DIGITAL = {
-    PRINTING_PAGE: 0.004,       // per A4 page
-    VIDEO_CALL_HOUR: 0.060,     // Data center and network usage
-    CLOUD_STORAGE_GB_PER_DAY: 0.0014 // Simplified daily factor for storing 1GB
+    PRINTING_PAGE: 0.005,
+    VIDEO_CALL_HOUR: 0.060,
+    CLOUD_STORAGE_GB_PER_DAY: 0.0003
 };
 
-// --- INTERFACES for input data ---
 interface TransportData {
     carDistanceKms?: number;
-    carType?: CarType | null; // Allow null
+    carType?: CarType | null;
     publicTransportKms?: number;
     cyclingWalkingKms?: number;
     flightKms?: number;
@@ -58,13 +47,12 @@ interface TransportData {
 
 interface EnergyData {
     officeHours?: number;
-    // The emission factor here is for the electricity grid (kg CO2e per kWh)
     emissionFactor?: number;
     electricityBill?: number;
 }
 
 interface FoodData {
-    diet?: Diet | null; // Allow null
+    diet?: Diet | null;
     foodConsumed?: number;
     waterBottlesConsumed?: number;
     ateLocalOrSeasonalFood?: boolean;
@@ -83,12 +71,9 @@ export interface CalculatorInput {
     digital: DigitalData;
 }
 
-// --- CALCULATION FUNCTIONS ---
 
 export function calculateEmissions(data: CalculatorInput) {
-    // --- Transport Emissions ---
     let carEmissions = 0;
-    // ✅ FIX: Only calculate if carType and distance are provided and valid.
     if (data.transport.carType && data.transport.carDistanceKms && data.transport.carDistanceKms > 0) {
         carEmissions = data.transport.carDistanceKms * EMISSION_FACTORS_TRANSPORT.CAR[data.transport.carType];
     }
@@ -98,14 +83,11 @@ export function calculateEmissions(data: CalculatorInput) {
         ((data.transport.flightKms || 0) * EMISSION_FACTORS_TRANSPORT.FLIGHTS) + ((data.transport.cyclingWalkingKms || 0) *
         EMISSION_FACTORS_TRANSPORT.CYCLING_WALKING);
 
-    // --- Energy Emissions ---
     const energyEmissions =
-        (data.energy.officeHours || 0) * EMISSION_FACTORS_ENERGY.AVG_KWH_PER_OFFICE_HOUR * (data.energy.emissionFactor || 0.45)+
-        ((data.energy.electricityBill || 0)* (data.energy.emissionFactor || 0.35) ); // Using a global average if not provided
-        
-    // --- Food Emissions ---
+        (data.energy.officeHours || 0) * EMISSION_FACTORS_ENERGY.AVG_KWH_PER_OFFICE_HOUR * (data.energy.emissionFactor || 0.82)+
+        ((data.energy.electricityBill || 0)* (data.energy.emissionFactor || 0.82) );
+
     let dietEmissions = 0;
-    // ✅ FIX: Only calculate if a diet has been selected.
     if (data.food.diet) {
         dietEmissions = EMISSION_FACTORS_FOOD.DIET[data.food.diet] * (data.food.foodConsumed || 0);
     }
@@ -117,13 +99,11 @@ export function calculateEmissions(data: CalculatorInput) {
         foodEmissions *= (1 - EMISSION_FACTORS_FOOD.LOCAL_FOOD_REDUCTION);
     }
 
-    // --- Digital Emissions ---
     const digitalEmissions =
         ((data.digital.pagesPrinted || 0) * EMISSION_FACTORS_DIGITAL.PRINTING_PAGE) +
         ((data.digital.videoCallHours || 0) * EMISSION_FACTORS_DIGITAL.VIDEO_CALL_HOUR) +
         ((data.digital.cloudStorageGb || 0) * EMISSION_FACTORS_DIGITAL.CLOUD_STORAGE_GB_PER_DAY);
 
-    // --- Total ---
     const totalEmissions = transportEmissions + energyEmissions + foodEmissions + digitalEmissions;
 
     return {

@@ -88,7 +88,7 @@ const ChartsView = ({
                                 dataKey="value"
                                 cx="50%"
                                 cy="50%"
-                                outerRadius={100}
+                                outerRadius="80%"
                                 fill="#82ca9d"
                                 label={({ name, value }) => `${name}: ${value !== undefined ? value.toFixed(2) : "0.00"}%`}
                             >
@@ -109,7 +109,7 @@ const ChartsView = ({
                             <XAxis dataKey="name" tick={{ fill: "#4CAF50", fontWeight: 'bold' }} />
                             <YAxis tick={{ fill: "#4CAF50", fontWeight: 'bold' }} />
                             <Tooltip contentStyle={{ backgroundColor: "#f9f9f9", borderRadius: "8px" }} />
-                            <Bar dataKey="value" fill="#16a34a" barSize={40} />
+                            <Bar dataKey="value" fill="#16a34a" barSize={30} />
                         </BarChart>
                     </ResponsiveContainer>
                 );
@@ -139,7 +139,7 @@ const ChartsView = ({
                     </button>
                 ))}
             </div>
-            <div className="mt-4 p-6 bg-gray-50 rounded-lg min-h-[300px]">
+            <div className="mt-4 p-6 bg-gray-50 rounded-lg w-full max-w-full">
                 {renderChart()}
             </div>
         </div>
