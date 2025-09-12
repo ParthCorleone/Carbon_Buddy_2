@@ -137,7 +137,7 @@ export default function AuthPage() {
               Join a difference for our planet.
             </p>
           </div>
-          <p className="text-sm text-green-300">© 2024 CarbonBuddy Inc.</p>
+          <p className="text-sm text-green-300">© 2025 CarbonBuddy Inc.</p>
         </div>
       </div>
 

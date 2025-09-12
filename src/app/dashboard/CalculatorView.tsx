@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Footprints, Zap, Apple, Monitor } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+
 import React from 'react';
 
 type TodayEmissions = {
@@ -91,7 +91,6 @@ const CalculatorView = ({ todayEmissions }: { todayEmissions?: TodayEmissions })
 
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState("");
-    const router = useRouter();
 
     const categories: { name: string; id: TabId; icon: React.ReactElement; value: number }[] = [
         { name: 'Transport', id: 'transport', icon: <Footprints size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.transportEmissions ?? 0) },

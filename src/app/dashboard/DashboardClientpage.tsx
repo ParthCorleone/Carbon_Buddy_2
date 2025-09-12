@@ -164,7 +164,7 @@ export default function DashboardPage() {
             <div className="max-w-7xl mx-auto">
                 <header className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-800">Welcome back, {userName}! {displayPlant()}</h1>
-                    <p className="text-gray-600 text-lg">You&aposre doing great! Here's your carbon footprint summary.</p>
+                    <p className="text-gray-600 text-lg">You&apos;re doing great! Here&apos;s your carbon footprint summary.</p>
                 </header>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <SummaryCard

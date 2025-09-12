@@ -1,5 +1,3 @@
-import { EmissionEntry } from '@prisma/client';
-
 export function getWeekDateRange(): { gte: Date, lte: Date } {
     const now = new Date();
     const dayOfWeek = now.getDay(); // Sunday = 0, Monday = 1, etc.
