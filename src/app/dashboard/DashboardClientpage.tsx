@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { BarChart as BarIcon, Droplet, Leaf, TrendingUp } from 'lucide-react';
 import CalculatorView from './CalculatorView';
 import ChartsView from './ChartsView';
-//import ChatView from './ChatView'; // <-- Import the new ChatView
+import ChatView from './ChatView';
 
 type TodayEmissions = {
     transportEmissions?: number;
@@ -232,7 +232,8 @@ export default function DashboardPage() {
                                 lastMonthTotal={lastMonthTotal}
                             />
                         ),
-                        // chatbot: <ChatView /> // <-- Use ChatView here
+                        chatbot: <ChatView todayEmissions={todayEmissions} />
+
                     }[view]}
                 </main>
             </div>

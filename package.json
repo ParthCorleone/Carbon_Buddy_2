@@ -10,6 +10,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.15.0",
     "@types/js-cookie": "^3.0.6",
     "bcryptjs": "^3.0.2",
