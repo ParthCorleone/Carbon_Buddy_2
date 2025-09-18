@@ -214,12 +214,12 @@ export default function DashboardPage() {
                     >
                         Charts
                     </button>
-                    {/* <button
+                    <button
                         onClick={() => setView('chatbot')}
                         className={`flex-1 min-w-[100px] px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-center ${view === 'chatbot' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         Chat
-                    </button> */}
+                    </button>
                 </div>
                 <main>
                     {{
