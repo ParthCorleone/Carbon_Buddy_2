@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Footprints, Zap, Apple, Monitor } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+
 import React from 'react';
 
 type TodayEmissions = {
@@ -91,7 +91,6 @@ const CalculatorView = ({ todayEmissions }: { todayEmissions?: TodayEmissions })
 
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState("");
-    const router = useRouter();
 
     const categories: { name: string; id: TabId; icon: React.ReactElement; value: number }[] = [
         { name: 'Transport', id: 'transport', icon: <Footprints size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.transportEmissions ?? 0) },
@@ -100,12 +99,21 @@ const CalculatorView = ({ todayEmissions }: { todayEmissions?: TodayEmissions })
         { name: 'Digital', id: 'digital', icon: <Monitor size={24} className="mx-auto text-gray-600" />, value: Number(todayEmissions?.digitalEmissions ?? 0) },
     ];
 
-    const handleChange = (tab: TabId, field: string, value: any) => {
-        setFormData((prev: typeof formData) => ({
-            ...prev,
-            [tab]: { ...prev[tab], [field]: value }
-        }));
-    };
+// The corrected generic signature
+const handleChange = <
+  T extends TabId,
+  K extends keyof (typeof formData)[T]
+>(
+  tab: T,
+  field: K,
+  value: (typeof formData)[T][K]
+) => {
+  // No type needed for `prev`. It's inferred automatically!
+setFormData((prev: typeof formData) => ({
+    ...prev,
+    [tab]: { ...prev[tab], [field]: value },
+}));
+};
 
     const handleAdd = (tab: TabId) => {
         setAdded(prev => ({ ...prev, [tab]: true }));
@@ -222,7 +230,7 @@ const CalculatorView = ({ todayEmissions }: { todayEmissions?: TodayEmissions })
                             onChange={(e) => handleChange("energy", "electricityBill", Number(e.target.value))}
                             className="w-full p-2 border rounded mb-4"
                         />
-                        <label className="block mb-2">Emission Factor</label>
+                        <label className="block mb-2">Emission Factor in kWh</label>
                         <input
                             type="number"
                             value={formData.energy.emissionFactor}

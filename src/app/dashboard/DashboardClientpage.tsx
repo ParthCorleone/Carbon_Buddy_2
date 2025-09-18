@@ -30,6 +30,15 @@ type TodayEmissions = {
     cloudStorageGb?: number;
 };
 
+type DashboardData = {
+  userName: string;
+  summary: Summary;
+  todayEmissions?: TodayEmissions;
+  allEntries?: { date: string; totalEmissions: number }[];
+  thisMonthTotal?: number;
+  lastMonthTotal?: number;
+};
+
 type Summary = {
     thisWeekEmissions: number;
     monthlyReduction: number;
@@ -83,7 +92,7 @@ const SummaryCard = ({
 export default function DashboardPage() {
     const [view, setView] = useState('calculator');
     const [loading, setLoading] = useState(true);
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<DashboardData | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const router = useRouter();
@@ -134,10 +143,7 @@ export default function DashboardPage() {
         lastMonthTotal?: number;
     };
 
-    //testing
-    // console.log("Data for Chatbot:", todayEmissions);
-
-    let displayPlant = (() => {
+    const displayPlant = (() => {
         const plants = [
             "🌵", "🌱", "🍃", "🌺", "🌼", "🌸", "🌻", "🌷", "🌾", "🍁",
             "🥀", "🍀", "☘️", "🌴", "🌲", "🎄", "🌳", "🌷", "🌿", "🌾",
@@ -158,7 +164,7 @@ export default function DashboardPage() {
             <div className="max-w-7xl mx-auto">
                 <header className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-800">Welcome back, {userName}! {displayPlant()}</h1>
-                    <p className="text-gray-600 text-lg">You're doing great! Here's your carbon footprint summary.</p>
+                    <p className="text-gray-600 text-lg">You&apos;re doing great! Here&apos;s your carbon footprint summary.</p>
                 </header>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <SummaryCard
@@ -208,12 +214,12 @@ export default function DashboardPage() {
                     >
                         Charts
                     </button>
-                    <button
+                    {/* <button
                         onClick={() => setView('chatbot')}
                         className={`flex-1 min-w-[100px] px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-center ${view === 'chatbot' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         Chat
-                    </button>
+                    </button> */}
                 </div>
                 <main>
                     {{
@@ -227,6 +233,7 @@ export default function DashboardPage() {
                             />
                         ),
                         chatbot: <ChatView todayEmissions={todayEmissions} />
+
                     }[view]}
                 </main>
             </div>

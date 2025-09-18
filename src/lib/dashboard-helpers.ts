@@ -1,5 +1,3 @@
-import { EmissionEntry } from '@prisma/client';
-
 export function getWeekDateRange(): { gte: Date, lte: Date } {
     const now = new Date();
     const dayOfWeek = now.getDay(); // Sunday = 0, Monday = 1, etc.
@@ -51,7 +49,7 @@ export function calculateStreak(entries: { date: Date, autoFilled?: boolean }[])
     }
 
     let streak = 0;
-    let today = new Date();
+    const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const mostRecentEntry = realEntries[0];

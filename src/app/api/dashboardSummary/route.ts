@@ -8,47 +8,49 @@ import {
   getMonthDateRange,
 } from "@/lib/dashboard-helpers";
 
-const JWT_SECRET = process.env.JWT_SECRET;
+//const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET as string;
+
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is not defined");
 }
 
-// --- Helper to get userId from JWT ---
+// Helper to get userId from JWT stored in cookies
 async function getUserIdFromToken() {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
   if (!token) return null;
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET as string) as { userId: string };
-    return decoded.userId;
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (typeof decoded === "object" && decoded !== null && "userId" in decoded) {
+      return (decoded as jwt.JwtPayload).userId as string;
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-// --- Helper: backfill missing days ---
+// Backfill missing days with averaged data
 async function backfillEmissions(userId: string) {
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
 
-  // Get last entry
   const lastEntry = await prisma.emissionEntry.findFirst({
     where: { userId },
     orderBy: { date: "desc" },
   });
 
-  if (!lastEntry) return; // no entries yet
+  if (!lastEntry) return;
 
-  let lastDate = new Date(lastEntry.date);
-  lastDate.setHours(0, 0, 0, 0);
+  const lastDate = new Date(lastEntry.date);
+  lastDate.setUTCHours(0, 0, 0, 0);
 
-  // Start from the day after last entry
-  let current = new Date(lastDate);
+  const current = new Date(lastDate);
   current.setDate(current.getDate() + 1);
 
   while (current < today) {
-    // get past 5-6 real entries for average
     const pastEntries = await prisma.emissionEntry.findMany({
       where: { userId },
       orderBy: { date: "desc" },
@@ -57,8 +59,8 @@ async function backfillEmissions(userId: string) {
 
     if (pastEntries.length === 0) break;
 
-    const avg = (field: keyof (typeof pastEntries)[0]) =>
-      pastEntries.reduce((sum, e) => sum + (e[field] as number), 0) /
+    const avg = (field: keyof typeof pastEntries[0]) =>
+      pastEntries.reduce((sum, e) => sum + (e[field] as number || 0), 0) /
       pastEntries.length;
 
     await prisma.emissionEntry.create({
@@ -85,12 +87,14 @@ export async function GET() {
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {  
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
-    // --- NEW: backfill missing entries before fetching data ---
+    // Backfill missing days
     await backfillEmissions(userId);
 
     const today = new Date();
@@ -99,7 +103,6 @@ export async function GET() {
     const endOfToday = new Date(today);
     endOfToday.setUTCHours(23, 59, 59, 999);
 
-    // --- Fetch in parallel ---
     const [allEntries, thisWeekAggregate, todayEmissionsData] =
       await Promise.all([
         prisma.emissionEntry.findMany({
@@ -124,18 +127,22 @@ export async function GET() {
         }),
       ]);
 
-    // --- Process data ---
     const thisWeekEmissions = thisWeekAggregate._sum.totalEmissions || 0;
     const streak = calculateStreak(allEntries);
 
-    // Fetch totals for current and last month
     const [thisMonthAgg, lastMonthAgg] = await Promise.all([
       prisma.emissionEntry.aggregate({
-        where: { userId, date: getMonthDateRange(0) },
+        where: {
+          userId,
+          date: getMonthDateRange(0),
+        },
         _sum: { totalEmissions: true },
       }),
       prisma.emissionEntry.aggregate({
-        where: { userId, date: getMonthDateRange(-1) },
+        where: {
+          userId,
+          date: getMonthDateRange(-1),
+        },
         _sum: { totalEmissions: true },
       }),
     ]);

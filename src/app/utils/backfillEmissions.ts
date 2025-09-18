@@ -11,14 +11,14 @@ export async function backfillEmissions(userId: string) {
     orderBy: { date: "desc" },
   });
 
-  let lastDate = lastEntry ? new Date(lastEntry.date) : null;
+  const lastDate = lastEntry ? new Date(lastEntry.date) : null;
   if (lastDate) lastDate.setHours(0,0,0,0);
 
   // If no entries exist, nothing to backfill yet
   if (!lastDate) return;
 
   // Calculate missing days (up to yesterday)
-  let current = new Date(lastDate);
+  const current = new Date(lastDate);
   current.setDate(current.getDate() + 1);
 
   while (current < today) {

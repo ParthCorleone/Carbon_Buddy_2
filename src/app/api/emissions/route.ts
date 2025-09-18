@@ -1,21 +1,25 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { calculateEmissions, CalculatorInput } from '@/lib/calculations';
 
-const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret-key';
+//const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
-// --- Helper to get userId from JWT ---
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET must be defined in environment variables");
+}
+
+// Helper to extract userId from JWT token stored in cookie
 async function getUserIdFromToken() {
   const cookieStore = await cookies();
   const token = cookieStore.get('token')?.value;
   if (!token) return null;
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    return decoded.userId;
+    const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+    return decoded && typeof decoded === 'object' ? decoded.userId as string : null;
   } catch {
     return null;
   }
@@ -30,44 +34,44 @@ export async function POST(request: Request) {
 
     const rawData: CalculatorInput = await request.json();
 
-    // 1. Calculate emissions (category + total)
+    // Calculate emissions based on the input
     const calculated = calculateEmissions(rawData);
 
-    // 2. Prepare DB entry
     // Use today's date at midnight UTC
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
+    // Prepare entry data, ensure alignment with PostgreSQL types
     const entryData = {
-      userId,
-      date: today,
+      userId,                   // UUID in PostgreSQL
+      date: today,               // timestamp without time zone
 
-      // Raw inputs
-      carDistanceKms: rawData.transport.carDistanceKms,
-      carType: rawData.transport.carType,
-      publicTransportKms: rawData.transport.publicTransportKms,
-      flightKms: rawData.transport.flightKms,
-      cyclingWalkingKms: rawData.transport.cyclingWalkingKms,
-      officeHours: rawData.energy.officeHours,
-      electricityBill: rawData.energy.electricityBill,
-      emissionFactor: rawData.energy.emissionFactor,
-      diet: rawData.food.diet,
-      foodConsumed: rawData.food.foodConsumed,
-      waterBottlesConsumed: rawData.food.waterBottlesConsumed,
-      ateLocalOrSeasonalFood: rawData.food.ateLocalOrSeasonalFood,
-      pagesPrinted: rawData.digital.pagesPrinted,
-      videoCallHours: rawData.digital.videoCallHours,
-      cloudStorageGb: rawData.digital.cloudStorageGb,
+      // Raw inputs (nullable fields can be undefined if not provided)
+      carDistanceKms: rawData.transport.carDistanceKms ?? null,
+      carType: rawData.transport.carType ?? null,
+      publicTransportKms: rawData.transport.publicTransportKms ?? null,
+      flightKms: rawData.transport.flightKms ?? null,
+      cyclingWalkingKms: rawData.transport.cyclingWalkingKms ?? null,
+      officeHours: rawData.energy.officeHours ?? null,
+      electricityBill: rawData.energy.electricityBill ?? null,
+      emissionFactor: rawData.energy.emissionFactor ?? null,
+      diet: rawData.food.diet ?? null,
+      foodConsumed: rawData.food.foodConsumed ?? null,
+      waterBottlesConsumed: rawData.food.waterBottlesConsumed ?? null,
+      ateLocalOrSeasonalFood: typeof rawData.food.ateLocalOrSeasonalFood === 'boolean' ? rawData.food.ateLocalOrSeasonalFood : undefined,
+      pagesPrinted: rawData.digital.pagesPrinted ?? null,
+      videoCallHours: rawData.digital.videoCallHours ?? null,
+      cloudStorageGb: rawData.digital.cloudStorageGb ?? null,
 
-      // Calculated emissions
-      transportEmissions: calculated.transportEmissions,
-      energyEmissions: calculated.energyEmissions,
-      foodEmissions: calculated.foodEmissions,
-      digitalEmissions: calculated.digitalEmissions,
-      totalEmissions: calculated.totalEmissions,
+      // Calculated emissions (default to 0 if undefined)
+      transportEmissions: calculated.transportEmissions ?? 0,
+      energyEmissions: calculated.energyEmissions ?? 0,
+      foodEmissions: calculated.foodEmissions ?? 0,
+      digitalEmissions: calculated.digitalEmissions ?? 0,
+      totalEmissions: calculated.totalEmissions ?? 0,
     };
-    
-    // 3. Upsert (update if entry exists for today, else create)
+
+    // Upsert the entry for today's date
     const result = await prisma.emissionEntry.upsert({
       where: {
         userId_date: {

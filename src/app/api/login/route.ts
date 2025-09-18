@@ -1,22 +1,28 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
-const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret-key'; // IMPORTANT: Use an environment variable
+//const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+    throw new Error("JWT_SECRET must be defined in your environment variables.");
+}
+// Type assertion to ensure JWT_SECRET is a string
+const JWT_SECRET_STRING = JWT_SECRET as string;
 
 export async function POST(request: Request) {
     try {
         const { email, password } = await request.json();
 
-        // 1. Basic Validation
+        // Basic validation
         if (!email || !password) {
             return NextResponse.json({ message: 'Email and password are required.' }, { status: 400 });
         }
 
-        // 2. Find the user
+        // Find user by email
         const user = await prisma.user.findUnique({
             where: { email },
         });
@@ -25,31 +31,28 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid credentials.' }, { status: 401 });
         }
 
-        // 3. Compare passwords
+        // Compare hashed password
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
             return NextResponse.json({ message: 'Invalid credentials.' }, { status: 401 });
         }
-
-        // 4. Create JWT
         const token = jwt.sign(
             { userId: user.id, email: user.email },
-            JWT_SECRET,
-            { expiresIn: '7d' } // Token expires in 7 days
+            JWT_SECRET_STRING,
+            { expiresIn: '7d' }
         );
 
-        // 5. Set JWT in an HTTP-Only cookie
+        // Set HTTP-only cookie
         const cookieStore = await cookies();
         cookieStore.set('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
-            maxAge: 60 * 60 * 24 * 7, // 1 week
+            maxAge: 60 * 60 * 24 * 7,
             path: '/',
         });
-        
-        // 6. Return success response
+
         return NextResponse.json({ message: 'Login successful.' }, { status: 200 });
 
     } catch (error) {
