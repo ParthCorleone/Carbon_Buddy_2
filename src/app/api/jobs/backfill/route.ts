@@ -18,7 +18,7 @@ async function backfillEmissions(userId: string) {
   const lastDate = new Date(lastEntry.date);
   lastDate.setUTCHours(0, 0, 0, 0);
 
-  if(lastDate >= today) return;
+  if (lastDate >= today) return;
 
   // Optimization: Fetch the initial 6 entries once before the loop.
   const pastEntries = await prisma.emissionEntry.findMany({
@@ -29,7 +29,7 @@ async function backfillEmissions(userId: string) {
 
   if (pastEntries.length === 0) return;
 
-  const avg = (field: keyof typeof pastEntries[0]) =>
+  const avg = (field: keyof (typeof pastEntries)[0]) =>
     pastEntries.reduce((sum, e) => sum + (Number(e[field]) || 0), 0) /
     pastEntries.length;
 
@@ -40,7 +40,7 @@ async function backfillEmissions(userId: string) {
     digitalEmissions: avg("digitalEmissions"),
     totalEmissions: avg("totalEmissions"),
   };
-  
+
   const entriesToCreate = [];
   const current = new Date(lastDate);
   current.setDate(current.getDate() + 1);
@@ -65,18 +65,21 @@ async function backfillEmissions(userId: string) {
 }
 
 export async function POST(request: Request) {
-  const { userId, secret } = await request.json();
-
-  // 🔐 Security Check: Protect the endpoint
-  if (secret !== process.env.INTERNAL_API_SECRET) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
-  if (!userId) {
-    return NextResponse.json({ message: "User ID is required" }, { status: 400 });
-  }
-
   try {
+    const { userId, secret } = await request.json();
+
+    // 🔐 Security Check: Protect the endpoint
+    if (secret !== process.env.INTERNAL_API_SECRET) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!userId) {
+      return NextResponse.json(
+        { message: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
     // We can run this with await here because the client is not waiting for this response.
     await backfillEmissions(userId);
     return NextResponse.json({ message: "Backfill process completed." });

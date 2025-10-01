@@ -10,6 +10,7 @@ import {
 
 //const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET as string;
+const internal = process.env.INTERNAL_API_SECRET;
 
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is not defined");
@@ -85,12 +86,12 @@ export async function GET() {
   if (!userId) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
-  fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/jobs/backfill`, {
+  fetch(`/api/jobs/backfill`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       userId: userId,
-      secret: process.env.INTERNAL_API_SECRET,
+      secret: internal,
     }),
   });
 
