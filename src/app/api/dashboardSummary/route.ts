@@ -32,59 +32,67 @@ async function getUserIdFromToken() {
   }
 }
 
-// Backfill missing days with averaged data
-async function backfillEmissions(userId: string) {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
+// // Backfill missing days with averaged data
+// async function backfillEmissions(userId: string) {
+//   const today = new Date();
+//   today.setUTCHours(0, 0, 0, 0);
 
-  const lastEntry = await prisma.emissionEntry.findFirst({
-    where: { userId },
-    orderBy: { date: "desc" },
-  });
+//   const lastEntry = await prisma.emissionEntry.findFirst({
+//     where: { userId },
+//     orderBy: { date: "desc" },
+//   });
 
-  if (!lastEntry) return;
+//   if (!lastEntry) return;
 
-  const lastDate = new Date(lastEntry.date);
-  lastDate.setUTCHours(0, 0, 0, 0);
+//   const lastDate = new Date(lastEntry.date);
+//   lastDate.setUTCHours(0, 0, 0, 0);
 
-  const current = new Date(lastDate);
-  current.setDate(current.getDate() + 1);
+//   const current = new Date(lastDate);
+//   current.setDate(current.getDate() + 1);
 
-  while (current < today) {
-    const pastEntries = await prisma.emissionEntry.findMany({
-      where: { userId },
-      orderBy: { date: "desc" },
-      take: 6,
-    });
+//   while (current < today) {
+//     const pastEntries = await prisma.emissionEntry.findMany({
+//       where: { userId },
+//       orderBy: { date: "desc" },
+//       take: 6,
+//     });
 
-    if (pastEntries.length === 0) break;
+//     if (pastEntries.length === 0) break;
 
-    const avg = (field: keyof typeof pastEntries[0]) =>
-      pastEntries.reduce((sum, e) => sum + (e[field] as number || 0), 0) /
-      pastEntries.length;
+//     const avg = (field: keyof typeof pastEntries[0]) =>
+//       pastEntries.reduce((sum, e) => sum + (e[field] as number || 0), 0) /
+//       pastEntries.length;
 
-    await prisma.emissionEntry.create({
-      data: {
-        userId,
-        date: new Date(current),
-        transportEmissions: avg("transportEmissions"),
-        foodEmissions: avg("foodEmissions"),
-        energyEmissions: avg("energyEmissions"),
-        digitalEmissions: avg("digitalEmissions"),
-        totalEmissions: avg("totalEmissions"),
-        autoFilled: true,
-      },
-    });
+//     await prisma.emissionEntry.create({
+//       data: {
+//         userId,
+//         date: new Date(current),
+//         transportEmissions: avg("transportEmissions"),
+//         foodEmissions: avg("foodEmissions"),
+//         energyEmissions: avg("energyEmissions"),
+//         digitalEmissions: avg("digitalEmissions"),
+//         totalEmissions: avg("totalEmissions"),
+//         autoFilled: true,
+//       },
+//     });
 
-    current.setDate(current.getDate() + 1);
-  }
-}
+//     current.setDate(current.getDate() + 1);
+//   }
+// }
 
 export async function GET() {
   const userId = await getUserIdFromToken();
   if (!userId) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
+  fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/jobs/backfill`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId: userId,
+      secret: process.env.INTERNAL_API_SECRET,
+    }),
+  });
 
   try {
     const user = await prisma.user.findUnique({
@@ -95,7 +103,7 @@ export async function GET() {
     }
 
     // Backfill missing days
-    await backfillEmissions(userId);
+    //await backfillEmissions(userId);
 
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
