@@ -178,7 +178,7 @@ export default function DashboardPage() {
                     <SummaryCard
                         icon={<TrendingUp className="text-blue-600" />}
                         title="Monthly Reduction"
-                        value={Math.abs(summary.monthlyReduction)}
+                        value={Math.abs(summary.monthlyReduction).toFixed(2)}
                         unit="%"
                         description="vs last month"
                         bgColor="bg-blue-100"

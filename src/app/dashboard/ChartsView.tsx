@@ -41,9 +41,18 @@ const ChartsView = ({
         { name: 'Monthly', id: 'goal', icon: <Target /> },
     ];
 
-    const weeklyData = allEntries.map((e) => ({
-        date: new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        emission: e.totalEmissions,
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const monthlyEntries = allEntries.filter((e) => {
+        const d = new Date(e.date);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+
+    const weeklyData = monthlyEntries.map((e) => ({
+        date: new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    emission: e.totalEmissions,
     }));
 
     const breakdownData = [
