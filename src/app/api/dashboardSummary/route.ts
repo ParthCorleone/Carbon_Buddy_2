@@ -156,7 +156,7 @@ export async function GET() {
         ((lastMonthTotal - thisMonthTotal) / lastMonthTotal) * 100;
     }
 
-    const treesSaved = Math.floor((90 - thisWeekEmissions) / 2);
+    const treesSaved = Math.max(0, Math.floor((90 - thisWeekEmissions) / 2));
 
     const response = {
       userName: user.name,
