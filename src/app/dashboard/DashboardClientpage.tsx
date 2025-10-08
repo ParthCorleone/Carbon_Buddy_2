@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { BarChart as BarIcon, Droplet, Leaf, TrendingUp } from 'lucide-react';
+import { BarChart as BarIcon, Droplet, Leaf, TrendingUp, TrendingDown } from 'lucide-react';
 import CalculatorView from './CalculatorView';
 import ChartsView from './ChartsView';
 import ChatView from './ChatView';
@@ -78,7 +78,7 @@ const SummaryCard = ({
                         {value}
                         <span className="text-xl font-semibold ml-1">{unit}</span>
                     </p>
-                    {isPositive && <TrendingUp size={20} className="ml-2 text-green-600" />}
+                    {isPositive && <TrendingDown size={20} className="ml-2 text-green-600" />}
                     {isNegative && <TrendingUp size={20} className="ml-2 text-red-600" />}
                 </div>
                 <p className="text-sm text-gray-600 mt-1">{description}</p>
@@ -176,7 +176,7 @@ export default function DashboardPage() {
                         bgColor="bg-green-100"
                     />
                     <SummaryCard
-                        icon={<TrendingUp className="text-blue-600" />}
+                        icon={<TrendingDown className="text-blue-600" />}
                         title="Monthly Reduction"
                         value={Math.abs(summary.monthlyReduction).toFixed(2)}
                         unit="%"

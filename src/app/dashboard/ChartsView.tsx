@@ -82,10 +82,33 @@ const ChartsView = ({
                     </ResponsiveContainer>
                 );
             case 'daily':
+                // Example maximum allowed value (goal)
+                const dailyGoal = 12.85; // Change to dynamic if needed
+                const todayValue = todayEmissions?.totalEmissions ?? 0;
+                const saved = Math.max(dailyGoal - todayValue, 0);
+                const percentSaved = Math.min((saved / dailyGoal) * 100, 100);
+
                 return (
-                    <div className="flex flex-col items-center justify-center h-full py-8 bg-green-50 rounded-lg shadow-inner">
-                        <p className="text-5xl font-bold text-green-600">{(todayEmissions?.totalEmissions ?? 0).toFixed(2)} kg</p>
-                        <p className="text-gray-600 mt-2 text-lg">Total emissions today</p>
+                    <div className="flex flex-col items-center justify-center h-full py-8 bg-green-50 rounded-lg shadow-inner w-full">
+                        <p className="text-5xl font-bold text-green-600">{saved.toFixed(2)} kg</p>
+                        <p className="text-gray-600 mt-2 text-lg">Saved today</p>
+                        <div className="w-full max-w-md mt-6">
+                            <div className="flex justify-between mb-1">
+                                <span className="text-sm text-gray-700">Goal: {dailyGoal} kg</span>
+                                <span className="text-sm text-gray-700">{percentSaved.toFixed(0)}% below goal</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-4">
+                                <div
+                                    className="bg-green-500 h-4 rounded-full transition-all"
+                                    style={{ width: `${percentSaved}%` }}
+                                />
+                            </div>
+                        </div>
+                        <p className="mt-4 text-green-700 font-semibold">
+                            {todayValue <= dailyGoal
+                                ? "Great job! You're below your daily carbon goal."
+                                : "Try to reduce your emissions tomorrow!"}
+                        </p>
                     </div>
                 );
             case 'category':

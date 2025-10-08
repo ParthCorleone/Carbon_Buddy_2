@@ -223,7 +223,7 @@ setFormData((prev: typeof formData) => ({
                             onChange={(e) => handleChange("energy", "officeHours", Number(e.target.value))}
                             className="w-full p-2 border rounded mb-4"
                         />
-                        <label className="block mb-2">Electricity Bill</label>
+                        <label className="block mb-2">Electricity Bill (kWh)</label>
                         <input
                             type="number"
                             value={formData.energy.electricityBill}
